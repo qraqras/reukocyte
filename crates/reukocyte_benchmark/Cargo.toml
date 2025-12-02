@@ -1,0 +1,22 @@
+[package]
+name = "reukocyte_benchmark"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+reukocyte_layout.workspace = true
+reukocyte_lint.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "layout"
+harness = false
+
+[[bench]]
+name = "lint"
+harness = false
