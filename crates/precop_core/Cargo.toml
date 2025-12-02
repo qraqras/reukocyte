@@ -1,0 +1,13 @@
+[package]
+name = "precop_core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core functionality for PreCop"
+
+[dependencies]
+serde.workspace = true
+serde_yaml.workspace = true
+thiserror.workspace = true
+rayon.workspace = true

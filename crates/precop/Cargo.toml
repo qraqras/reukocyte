@@ -1,0 +1,18 @@
+[package]
+name = "precop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A fast Ruby Layout formatter written in Rust"
+
+[[bin]]
+name = "precop"
+path = "src/main.rs"
+
+[dependencies]
+precop_core.workspace = true
+precop_layout.workspace = true
+clap.workspace = true
+miette.workspace = true
+rayon.workspace = true
