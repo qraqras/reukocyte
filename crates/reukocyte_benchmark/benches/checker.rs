@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 
 /// Generate a Ruby file with the specified number of methods
 fn generate_ruby_source(methods: usize, with_violations: bool) -> Vec<u8> {

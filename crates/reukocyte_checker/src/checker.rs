@@ -1,62 +1,64 @@
-//! Checker - the main AST visitor that coordinates rule execution.
-//!
-//! Inspired by Ruff's Checker, this struct:
-//! - Holds the source and diagnostics
-//! - Implements the Visit trait for AST traversal
-//! - Delegates to analyze module for rule dispatch
-
-use std::cell::OnceCell;
-
-use ruby_prism::Visit;
-
 use crate::analyze;
 use crate::locator::LineIndex;
-use crate::Diagnostic;
+use crate::{Diagnostic, Fix, Severity};
+use ruby_prism::Visit;
+use std::cell::OnceCell;
 
 /// The main checker that traverses the AST and runs rules.
-pub struct Checker<'a> {
-    /// The source code being checked
-    source: &'a [u8],
-    /// Line index for fast offset to location conversion (lazily initialized)
+pub struct Checker<'rk> {
+    source: &'rk [u8],
     line_index: OnceCell<LineIndex>,
-    /// Collected diagnostics
     diagnostics: Vec<Diagnostic>,
 }
 
-impl<'a> Checker<'a> {
-    /// Create a new Checker for the given source.
-    pub fn new(source: &'a [u8]) -> Self {
+impl<'rk> Checker<'rk> {
+    pub fn new(source: &'rk [u8]) -> Self {
         Self {
-            source,
+            source: source,
             line_index: OnceCell::new(),
             diagnostics: Vec::new(),
         }
     }
-
-    /// Get the source code.
     pub fn source(&self) -> &[u8] {
         self.source
     }
-
-    /// Push a diagnostic (Ruff-style API).
     pub fn push_diagnostic(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
     }
 
-    /// Convert offset to (line, column) using lazily-initialized line index.
-    /// The line index is built on first call, then reused.
-    /// Uses binary search for O(log n) performance.
-    #[inline]
-    pub fn offset_to_location(&self, offset: usize) -> (usize, usize) {
-        self.line_index
-            .get_or_init(|| LineIndex::from_source(self.source))
-            .line_column(offset)
+    /// Create and push a diagnostic. Line/column are calculated from offsets.
+    pub fn report(
+        &mut self,
+        rule: &'static str,
+        message: String,
+        severity: Severity,
+        start_offset: usize,
+        end_offset: usize,
+        fix: Option<Fix>,
+    ) {
+        let index = self
+            .line_index
+            .get_or_init(|| LineIndex::from_source(self.source));
+        let (line_start, column_start) = index.line_column(start_offset);
+        let (line_end, column_end) = index.line_column(end_offset);
+
+        self.diagnostics.push(Diagnostic::new(
+            rule,
+            message,
+            severity,
+            start_offset,
+            end_offset,
+            line_start,
+            line_end,
+            column_start,
+            column_end,
+            fix,
+        ));
     }
 
-    /// Consume the checker and return the diagnostics.
     pub fn into_diagnostics(mut self) -> Vec<Diagnostic> {
-        // Sort by location
-        self.diagnostics.sort_by_key(|d| (d.line, d.column));
+        self.diagnostics
+            .sort_by_key(|d| (d.line_start, d.column_start));
         self.diagnostics
     }
 }

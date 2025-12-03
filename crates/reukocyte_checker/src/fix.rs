@@ -4,7 +4,7 @@
 //! Uses RuboCop-style iterative correction: applies fixes in multiple passes
 //! until no more changes are made.
 
-use crate::{check, Applicability, Diagnostic, Edit};
+use crate::{Applicability, Diagnostic, Edit, check};
 
 /// Maximum number of iterations to prevent infinite loops.
 const MAX_ITERATIONS: usize = 10;

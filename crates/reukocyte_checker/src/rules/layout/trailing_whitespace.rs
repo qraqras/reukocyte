@@ -20,6 +20,7 @@ use crate::Checker;
 use crate::Diagnostic;
 use crate::Edit;
 use crate::Fix;
+use crate::Severity;
 
 const RULE_NAME: &str = "Layout/TrailingWhitespace";
 
@@ -43,6 +44,7 @@ fn check_source(source: &[u8]) -> Vec<Diagnostic> {
         if let Some(trailing_start) = find_trailing_whitespace(line) {
             let line_number = line_index + 1;
             let column = trailing_start + 1;
+            let end_column = line.len() + 1;
 
             // Calculate byte offset
             let line_start: usize = source
@@ -55,16 +57,19 @@ fn check_source(source: &[u8]) -> Vec<Diagnostic> {
             let end = line_start + line.len();
 
             // Create a fix that deletes the trailing whitespace
-            let fix = Fix::safe_edit(Edit::deletion(start, end));
+            let fix = Fix::safe(vec![Edit::deletion(start, end)]);
 
-            diagnostics.push(Diagnostic::with_fix(
+            diagnostics.push(Diagnostic::new(
                 RULE_NAME,
                 "Trailing whitespace detected.".to_string(),
+                Severity::Convention,
                 start,
                 end,
                 line_number,
+                line_number, // end_line (same line)
                 column,
-                fix,
+                end_column, // end_column
+                Some(fix),
             ));
         }
     }
@@ -104,8 +109,8 @@ mod tests {
         let source = b"def foo  \n  bar\nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].line, 1);
-        assert_eq!(diagnostics[0].column, 8); // After "def foo"
+        assert_eq!(diagnostics[0].line_start, 1);
+        assert_eq!(diagnostics[0].column_start, 8); // After "def foo"
     }
 
     #[test]
@@ -113,7 +118,7 @@ mod tests {
         let source = b"def foo\t\n  bar\nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].line, 1);
+        assert_eq!(diagnostics[0].line_start, 1);
     }
 
     #[test]
@@ -121,8 +126,8 @@ mod tests {
         let source = b"def foo  \n  bar  \nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 2);
-        assert_eq!(diagnostics[0].line, 1);
-        assert_eq!(diagnostics[1].line, 2);
+        assert_eq!(diagnostics[0].line_start, 1);
+        assert_eq!(diagnostics[1].line_start, 2);
     }
 
     #[test]
@@ -137,6 +142,6 @@ mod tests {
         let source = b"def foo\n   \nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].line, 2);
+        assert_eq!(diagnostics[0].line_start, 2);
     }
 }

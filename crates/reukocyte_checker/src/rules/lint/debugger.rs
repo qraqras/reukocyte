@@ -26,16 +26,12 @@
 use ruby_prism::CallNode;
 
 use crate::Checker;
-use crate::Diagnostic;
+use crate::Severity;
 
 const RULE_NAME: &str = "Lint/Debugger";
 
 /// Standalone debugger method names to detect (no receiver)
-const STANDALONE_DEBUGGERS: &[&[u8]] = &[
-    b"debugger",
-    b"byebug",
-    b"remote_byebug",
-];
+const STANDALONE_DEBUGGERS: &[&[u8]] = &[b"debugger", b"byebug", b"remote_byebug"];
 
 /// Debugger receiver/method combinations
 const DEBUGGER_RECEIVERS: &[(&[u8], &[u8])] = &[
@@ -60,18 +56,17 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
     if node.receiver().is_none() {
         for &debugger_method in STANDALONE_DEBUGGERS {
             if method_name == debugger_method {
-                let (line, column) = checker.offset_to_location(location.start_offset());
-                checker.push_diagnostic(Diagnostic::new(
+                checker.report(
                     RULE_NAME,
                     format!(
                         "Debugger statement `{}` detected.",
                         String::from_utf8_lossy(debugger_method)
                     ),
+                    Severity::Warning,
                     location.start_offset(),
                     location.end_offset(),
-                    line,
-                    column,
-                ));
+                    None,
+                );
                 return;
             }
         }
@@ -90,19 +85,18 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
         if let Some(recv_name) = receiver_name {
             for &(expected_recv, expected_method) in DEBUGGER_RECEIVERS {
                 if recv_name == expected_recv && method_name == expected_method {
-                    let (line, column) = checker.offset_to_location(location.start_offset());
-                    checker.push_diagnostic(Diagnostic::new(
+                    checker.report(
                         RULE_NAME,
                         format!(
                             "Debugger statement `{}.{}` detected.",
                             String::from_utf8_lossy(expected_recv),
                             String::from_utf8_lossy(expected_method)
                         ),
+                        Severity::Warning,
                         location.start_offset(),
                         location.end_offset(),
-                        line,
-                        column,
-                    ));
+                        None,
+                    );
                     return;
                 }
             }

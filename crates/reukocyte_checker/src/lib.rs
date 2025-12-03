@@ -13,7 +13,7 @@ pub mod rules;
 pub use locator::LineIndex;
 
 pub use checker::Checker;
-pub use diagnostic::{Applicability, Diagnostic, Edit, Fix};
+pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
 pub use fix::{apply_fixes, apply_fixes_with_remaining};
 
 use ruby_prism::Visit;
@@ -54,7 +54,6 @@ mod tests {
         let diagnostics = check(source);
         assert!(diagnostics.is_empty());
     }
-
 
     #[test]
     fn test_check_trailing_whitespace() {

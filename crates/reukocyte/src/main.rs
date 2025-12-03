@@ -91,14 +91,20 @@ fn check_file(path: &str, source: &[u8], fix_mode: bool) -> (usize, usize) {
 
         // Print remaining diagnostics
         for d in &remaining {
-            println!("{}:{}:{}: {}: {}", path, d.line, d.column, d.rule, d.message);
+            println!(
+                "{}:{}:{}: {}: {}",
+                path, d.line_start, d.column_start, d.rule, d.message
+            );
         }
 
         (remaining.len(), fix_count)
     } else {
         // Print diagnostics
         for d in &diagnostics {
-            println!("{}:{}:{}: {}: {}", path, d.line, d.column, d.rule, d.message);
+            println!(
+                "{}:{}:{}: {}: {}",
+                path, d.line_start, d.column_start, d.rule, d.message
+            );
         }
 
         (diagnostics.len(), 0)
