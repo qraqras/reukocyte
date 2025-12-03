@@ -23,6 +23,10 @@ impl<'rk> Checker<'rk> {
     pub fn source(&self) -> &[u8] {
         self.source
     }
+    pub fn line_index(&self) -> &LineIndex {
+        self.line_index
+            .get_or_init(|| LineIndex::from_source(self.source))
+    }
     pub fn push_diagnostic(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
     }

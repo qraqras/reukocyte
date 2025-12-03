@@ -1,27 +1,9 @@
-//! Layout/TrailingWhitespace
-//!
-//! Detects trailing whitespace at the end of lines.
-//!
-//! # Examples
-//!
-//! ```ruby
-//! # bad
-//! def foo··
-//!   bar
-//! end
-//!
-//! # good
-//! def foo
-//!   bar
-//! end
-//! ```
-
 use crate::Checker;
-use crate::Diagnostic;
 use crate::Edit;
 use crate::Fix;
 use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
+use crate::utils::is_blank;
 
 /// Rule identifier for Layout/TrailingWhitespace.
 pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
@@ -31,61 +13,46 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
 /// This rule doesn't need AST information - it operates on raw source bytes.
 /// Directly pushes diagnostics to the Checker (Ruff-style).
 pub fn check(checker: &mut Checker) {
-    // Collect diagnostics first, then push them
-    let diagnostics = check_source(checker.source());
-    for diagnostic in diagnostics {
-        checker.push_diagnostic(diagnostic);
+    // Collect edit ranges first, then report them
+    let edit_ranges = collect_edit_ranges(checker.source());
+    for (start, end) in edit_ranges {
+        let fix = Fix::safe(vec![Edit::deletion(start, end)]);
+        checker.report(
+            RULE_ID,
+            "Trailing whitespace detected.".to_string(),
+            Severity::Convention,
+            start,
+            end,
+            Some(fix),
+        );
     }
 }
 
-/// Check source for trailing whitespace and return diagnostics.
-fn check_source(source: &[u8]) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-
-    for (line_index, line) in source.split(|&b| b == b'\n').enumerate() {
+/// Collect (start, end) byte offsets of trailing whitespace.
+fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize)> {
+    let mut ranges = Vec::new();
+    let mut offset = 0;
+    for line in source.split(|&b| b == b'\n') {
         if let Some(trailing_start) = find_trailing_whitespace(line) {
-            let line_number = line_index + 1;
-            let column = trailing_start + 1;
-            let end_column = line.len() + 1;
-
-            // Calculate byte offset
-            let line_start: usize = source
-                .split(|&b| b == b'\n')
-                .take(line_index)
-                .map(|l| l.len() + 1)
-                .sum();
-
-            let start = line_start + trailing_start;
-            let end = line_start + line.len();
-
-            // Create a fix that deletes the trailing whitespace
-            let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-
-            diagnostics.push(Diagnostic::new(
-                RULE_ID,
-                "Trailing whitespace detected.".to_string(),
-                Severity::Convention,
-                start,
-                end,
-                line_number,
-                line_number, // end_line (same line)
-                column,
-                end_column, // end_column
-                Some(fix),
-            ));
+            let start = offset + trailing_start;
+            let end = offset + line.len();
+            ranges.push((start, end));
         }
+        offset += line.len() + 1;
     }
-
-    diagnostics
+    ranges
 }
 
 /// Find the start position of trailing whitespace in a line.
-/// Returns `None` if there is no trailing whitespace.
+/// Returns `None` if there is no trailing whitespace or invalid UTF-8.
 fn find_trailing_whitespace(line: &[u8]) -> Option<usize> {
-    let trimmed_len = line
-        .iter()
-        .rposition(|&b| b != b' ' && b != b'\t' && b != b'\r')
-        .map(|pos| pos + 1)
+    let line_str = std::str::from_utf8(line).ok()?;
+
+    let trimmed_len = line_str
+        .char_indices()
+        .rev()
+        .find(|(_, c)| !is_blank(*c))
+        .map(|(pos, c)| pos + c.len_utf8())
         .unwrap_or(0);
 
     if trimmed_len < line.len() && !line.is_empty() {
@@ -145,5 +112,23 @@ mod tests {
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].line_start, 2);
+    }
+
+    #[test]
+    fn test_fullwidth_space() {
+        // Fullwidth space (U+3000) at end of line
+        let source = "x = 0\u{3000}\n".as_bytes();
+        let diagnostics = check(source);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].line_start, 1);
+        assert_eq!(diagnostics[0].column_start, 6); // After "x = 0"
+    }
+
+    #[test]
+    fn test_cr_not_trailing_whitespace() {
+        // CR should NOT be detected as trailing whitespace (RuboCop behavior)
+        let source = b"def foo\r\n  bar\nend\n";
+        let diagnostics = check(source);
+        assert!(diagnostics.is_empty());
     }
 }

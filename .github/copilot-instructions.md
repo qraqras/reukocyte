@@ -7,10 +7,108 @@
 
 ## 直近のタスク
 このプロジェクトの直近のタスクは以下の通りです:
-- CLIコマンドの実装
-  - RuboCopのコマンド一覧を作成
-  - 各コマンドの引数やオプションを調査
-- clapでCLIコマンドをすべて実装(動作はしなくてもよい)
+- Layoutの実装
+  - [ ] Layout/AccessModifierIndentation
+  - [ ] Layout/ArgumentAlignment
+  - [ ] Layout/ArrayAlignment
+  - [ ] Layout/AssignmentIndentation
+  - [ ] Layout/BeginEndAlignment
+  - [ ] Layout/BlockAlignment
+  - [ ] Layout/BlockEndNewline
+  - [ ] Layout/CaseIndentation
+  - [ ] Layout/ClassStructure
+  - [ ] Layout/ClosingHeredocIndentation
+  - [ ] Layout/ClosingParenthesisIndentation
+  - [ ] Layout/CommentIndentation
+  - [ ] Layout/ConditionPosition
+  - [ ] Layout/DefEndAlignment
+  - [ ] Layout/DotPosition
+  - [ ] Layout/ElseAlignment
+  - [ ] Layout/EmptyComment
+  - [ ] Layout/EmptyLineAfterGuardClause
+  - [ ] Layout/EmptyLineAfterMagicComment
+  - [ ] Layout/EmptyLineAfterMultilineCondition
+  - [ ] Layout/EmptyLineBetweenDefs
+  - [ ] Layout/EmptyLines
+  - [ ] Layout/EmptyLinesAfterModuleInclusion
+  - [ ] Layout/EmptyLinesAroundAccessModifier
+  - [ ] Layout/EmptyLinesAroundArguments
+  - [ ] Layout/EmptyLinesAroundAttributeAccessor
+  - [ ] Layout/EmptyLinesAroundBeginBody
+  - [ ] Layout/EmptyLinesAroundBlockBody
+  - [ ] Layout/EmptyLinesAroundClassBody
+  - [ ] Layout/EmptyLinesAroundExceptionHandlingKeywords
+  - [ ] Layout/EmptyLinesAroundMethodBody
+  - [ ] Layout/EmptyLinesAroundModuleBody
+  - [ ] Layout/EndAlignment
+  - [ ] Layout/EndOfLine
+  - [ ] Layout/ExtraSpacing
+  - [ ] Layout/FirstArgumentIndentation
+  - [ ] Layout/FirstArrayElementIndentation
+  - [ ] Layout/FirstArrayElementLineBreak
+  - [ ] Layout/FirstHashElementIndentation
+  - [ ] Layout/FirstHashElementLineBreak
+  - [ ] Layout/FirstMethodArgumentLineBreak
+  - [ ] Layout/FirstMethodParameterLineBreak
+  - [ ] Layout/FirstParameterIndentation
+  - [ ] Layout/HashAlignment
+  - [ ] Layout/HeredocArgumentClosingParenthesis
+  - [ ] Layout/HeredocIndentation
+  - [ ] Layout/IndentationConsistency
+  - [ ] Layout/IndentationStyle
+  - [ ] Layout/IndentationWidth
+  - [ ] Layout/InitialIndentation
+  - [ ] Layout/LeadingCommentSpace
+  - [ ] Layout/LeadingEmptyLines
+  - [ ] Layout/LineContinuationLeadingSpace
+  - [ ] Layout/LineContinuationSpacing
+  - [ ] Layout/LineEndStringConcatenationIndentation
+  - [ ] Layout/LineLength
+  - [ ] Layout/MultilineArrayBraceLayout
+  - [ ] Layout/MultilineArrayLineBreaks
+  - [ ] Layout/MultilineAssignmentLayout
+  - [ ] Layout/MultilineBlockLayout
+  - [ ] Layout/MultilineHashBraceLayout
+  - [ ] Layout/MultilineHashKeyLineBreaks
+  - [ ] Layout/MultilineMethodArgumentLineBreaks
+  - [ ] Layout/MultilineMethodCallBraceLayout
+  - [ ] Layout/MultilineMethodCallIndentation
+  - [ ] Layout/MultilineMethodDefinitionBraceLayout
+  - [ ] Layout/MultilineMethodParameterLineBreaks
+  - [ ] Layout/MultilineOperationIndentation
+  - [ ] Layout/ParameterAlignment
+  - [ ] Layout/RedundantLineBreak
+  - [ ] Layout/RescueEnsureAlignment
+  - [ ] Layout/SingleLineBlockChain
+  - [ ] Layout/SpaceAfterColon
+  - [ ] Layout/SpaceAfterComma
+  - [ ] Layout/SpaceAfterMethodName
+  - [ ] Layout/SpaceAfterNot
+  - [ ] Layout/SpaceAfterSemicolon
+  - [ ] Layout/SpaceAroundBlockParameters
+  - [ ] Layout/SpaceAroundEqualsInParameterDefault
+  - [ ] Layout/SpaceAroundKeyword
+  - [ ] Layout/SpaceAroundMethodCallOperator
+  - [ ] Layout/SpaceAroundOperators
+  - [ ] Layout/SpaceBeforeBlockBraces
+  - [ ] Layout/SpaceBeforeBrackets
+  - [ ] Layout/SpaceBeforeComma
+  - [ ] Layout/SpaceBeforeComment
+  - [ ] Layout/SpaceBeforeFirstArg
+  - [ ] Layout/SpaceBeforeSemicolon
+  - [ ] Layout/SpaceInLambdaLiteral
+  - [ ] Layout/SpaceInsideArrayLiteralBrackets
+  - [ ] Layout/SpaceInsideArrayPercentLiteral
+  - [ ] Layout/SpaceInsideBlockBraces
+  - [ ] Layout/SpaceInsideHashLiteralBraces
+  - [ ] Layout/SpaceInsideParens
+  - [ ] Layout/SpaceInsidePercentLiteralDelimiters
+  - [ ] Layout/SpaceInsideRangeLiteral
+  - [ ] Layout/SpaceInsideReferenceBrackets
+  - [ ] Layout/SpaceInsideStringInterpolation
+  - [ ] Layout/TrailingEmptyLines
+  - [ ] Layout/TrailingWhitespace
+  - [ ] AllowMultilineFinalElement
 
 ## プロジェクトの全体像
 ### プロジェクト概要
