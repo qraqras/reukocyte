@@ -50,6 +50,8 @@ const DEBUGGER_RECEIVERS: &[(&[u8], &[u8])] = &[
 /// Check a CallNode for debugger statements.
 ///
 /// Directly pushes diagnostics to the Checker (Ruff-style).
+/// Note: No fix is provided because removing debugger statements
+/// may have side effects (e.g., debugging in production).
 pub fn check(checker: &mut Checker, node: &CallNode) {
     let method_name = node.name().as_slice();
     let location = node.location();
@@ -59,17 +61,17 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
         for &debugger_method in STANDALONE_DEBUGGERS {
             if method_name == debugger_method {
                 let (line, column) = checker.offset_to_location(location.start_offset());
-                checker.push_diagnostic(Diagnostic {
-                    rule: RULE_NAME,
-                    message: format!(
+                checker.push_diagnostic(Diagnostic::new(
+                    RULE_NAME,
+                    format!(
                         "Debugger statement `{}` detected.",
                         String::from_utf8_lossy(debugger_method)
                     ),
-                    start: location.start_offset(),
-                    end: location.end_offset(),
+                    location.start_offset(),
+                    location.end_offset(),
                     line,
                     column,
-                });
+                ));
                 return;
             }
         }
@@ -89,18 +91,18 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
             for &(expected_recv, expected_method) in DEBUGGER_RECEIVERS {
                 if recv_name == expected_recv && method_name == expected_method {
                     let (line, column) = checker.offset_to_location(location.start_offset());
-                    checker.push_diagnostic(Diagnostic {
-                        rule: RULE_NAME,
-                        message: format!(
+                    checker.push_diagnostic(Diagnostic::new(
+                        RULE_NAME,
+                        format!(
                             "Debugger statement `{}.{}` detected.",
                             String::from_utf8_lossy(expected_recv),
                             String::from_utf8_lossy(expected_method)
                         ),
-                        start: location.start_offset(),
-                        end: location.end_offset(),
+                        location.start_offset(),
+                        location.end_offset(),
                         line,
                         column,
-                    });
+                    ));
                     return;
                 }
             }

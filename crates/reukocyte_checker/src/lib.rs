@@ -3,15 +3,18 @@
 //! The main checker that coordinates parsing and rule execution.
 //! Inspired by Ruff's architecture - single AST traversal for all rules.
 
+mod analyze;
 mod checker;
 mod diagnostic;
+mod fix;
 mod locator;
 pub mod rules;
 
 pub use locator::LineIndex;
 
 pub use checker::Checker;
-pub use diagnostic::Diagnostic;
+pub use diagnostic::{Applicability, Diagnostic, Edit, Fix};
+pub use fix::{apply_fixes, apply_fixes_with_remaining};
 
 use ruby_prism::Visit;
 
@@ -19,17 +22,17 @@ use ruby_prism::Visit;
 ///
 /// This is the main entry point that:
 /// 1. Parses the source once
-/// 2. Runs line-based rules (Layout)
-/// 3. Traverses the AST once for all node-based rules (Lint)
+/// 2. Traverses the AST once for all node-based rules (Lint)
+/// 3. Runs line-based rules (Layout) - can use info from AST phase
 pub fn check(source: &[u8]) -> Vec<Diagnostic> {
     let parse_result = ruby_prism::parse(source);
     let mut checker = Checker::new(source);
 
-    // Run line-based rules (no AST needed)
-    rules::layout::trailing_whitespace::check(&mut checker);
-
     // Run AST-based rules (single traversal)
     checker.visit(&parse_result.node());
+
+    // Run line-based rules (after AST, can use collected info)
+    rules::layout::trailing_whitespace::check(&mut checker);
 
     checker.into_diagnostics()
 }

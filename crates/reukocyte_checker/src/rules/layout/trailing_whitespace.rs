@@ -18,6 +18,8 @@
 
 use crate::Checker;
 use crate::Diagnostic;
+use crate::Edit;
+use crate::Fix;
 
 const RULE_NAME: &str = "Layout/TrailingWhitespace";
 
@@ -49,14 +51,21 @@ fn check_source(source: &[u8]) -> Vec<Diagnostic> {
                 .map(|l| l.len() + 1)
                 .sum();
 
-            diagnostics.push(Diagnostic {
-                rule: RULE_NAME,
-                message: "Trailing whitespace detected.".to_string(),
-                start: line_start + trailing_start,
-                end: line_start + line.len(),
-                line: line_number,
+            let start = line_start + trailing_start;
+            let end = line_start + line.len();
+
+            // Create a fix that deletes the trailing whitespace
+            let fix = Fix::safe_edit(Edit::deletion(start, end));
+
+            diagnostics.push(Diagnostic::with_fix(
+                RULE_NAME,
+                "Trailing whitespace detected.".to_string(),
+                start,
+                end,
+                line_number,
                 column,
-            });
+                fix,
+            ));
         }
     }
 
@@ -131,4 +140,3 @@ mod tests {
         assert_eq!(diagnostics[0].line, 2);
     }
 }
-

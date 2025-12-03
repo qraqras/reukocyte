@@ -35,7 +35,7 @@ fn bench_debugger(c: &mut Criterion) {
             BenchmarkId::new("clean", methods),
             &source_clean,
             |b, source| {
-                b.iter(|| reukocyte_lint::check(black_box(source)));
+                b.iter(|| reukocyte_checker::check(black_box(source)));
             },
         );
 
@@ -43,7 +43,7 @@ fn bench_debugger(c: &mut Criterion) {
             BenchmarkId::new("with_debuggers", methods),
             &source_dirty,
             |b, source| {
-                b.iter(|| reukocyte_lint::check(black_box(source)));
+                b.iter(|| reukocyte_checker::check(black_box(source)));
             },
         );
     }
@@ -113,7 +113,7 @@ end
 "#;
 
     c.bench_function("Lint/real_world_controller", |b| {
-        b.iter(|| reukocyte_lint::check(black_box(source)));
+        b.iter(|| reukocyte_checker::check(black_box(source)));
     });
 }
 

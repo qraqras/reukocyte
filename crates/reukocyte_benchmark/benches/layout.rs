@@ -36,7 +36,7 @@ fn bench_trailing_whitespace(c: &mut Criterion) {
             BenchmarkId::new("clean", lines),
             &source_clean,
             |b, source| {
-                b.iter(|| reukocyte_layout::check(black_box(source)));
+                b.iter(|| reukocyte_checker::check(black_box(source)));
             },
         );
 
@@ -44,7 +44,7 @@ fn bench_trailing_whitespace(c: &mut Criterion) {
             BenchmarkId::new("with_violations", lines),
             &source_dirty,
             |b, source| {
-                b.iter(|| reukocyte_layout::check(black_box(source)));
+                b.iter(|| reukocyte_checker::check(black_box(source)));
             },
         );
     }
@@ -95,7 +95,7 @@ end
 "#;
 
     c.bench_function("Layout/real_world_model", |b| {
-        b.iter(|| reukocyte_layout::check(black_box(source)));
+        b.iter(|| reukocyte_checker::check(black_box(source)));
     });
 }
 

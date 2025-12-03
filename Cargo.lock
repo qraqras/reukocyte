@@ -507,26 +507,10 @@ version = "0.0.1"
 dependencies = [
  "criterion",
  "reukocyte_checker",
- "reukocyte_layout",
- "reukocyte_lint",
 ]
 
 [[package]]
 name = "reukocyte_checker"
-version = "0.0.1"
-dependencies = [
- "ruby-prism",
-]
-
-[[package]]
-name = "reukocyte_layout"
-version = "0.0.1"
-dependencies = [
- "ruby-prism",
-]
-
-[[package]]
-name = "reukocyte_lint"
 version = "0.0.1"
 dependencies = [
  "ruby-prism",

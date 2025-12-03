@@ -8,8 +8,6 @@ publish = false
 
 [dependencies]
 reukocyte_checker.workspace = true
-reukocyte_layout.workspace = true
-reukocyte_lint.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

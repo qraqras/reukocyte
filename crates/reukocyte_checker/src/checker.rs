@@ -3,14 +3,14 @@
 //! Inspired by Ruff's Checker, this struct:
 //! - Holds the source and diagnostics
 //! - Implements the Visit trait for AST traversal
-//! - Calls rule functions directly at each node
+//! - Delegates to analyze module for rule dispatch
 
 use std::cell::OnceCell;
 
 use ruby_prism::Visit;
 
+use crate::analyze;
 use crate::locator::LineIndex;
-use crate::rules;
 use crate::Diagnostic;
 
 /// The main checker that traverses the AST and runs rules.
@@ -66,8 +66,7 @@ impl Visit<'_> for Checker<'_> {
         // Visit children first
         ruby_prism::visit_call_node(self, node);
 
-        // Run rules directly (Ruff-style)
-        rules::lint::debugger::check(self, node);
+        // Run rules via analyze module (Ruff-style)
+        analyze::call_node(node, self);
     }
 }
-

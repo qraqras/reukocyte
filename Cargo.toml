@@ -12,8 +12,6 @@ repository = "https://github.com/qraqras/reukocyte"
 [workspace.dependencies]
 # Internal crates
 reukocyte_checker = { path = "crates/reukocyte_checker" }
-reukocyte_layout = { path = "crates/reukocyte_layout" }
-reukocyte_lint = { path = "crates/reukocyte_lint" }
 
 # Ruby parser
 ruby-prism = "1.6"
