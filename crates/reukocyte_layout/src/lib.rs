@@ -18,12 +18,14 @@ pub struct Diagnostic {
 }
 
 /// Check a Ruby source file for layout violations.
+///
+/// Note: This is kept for backwards compatibility and testing.
+/// The main entry point is now `reukocyte_checker::check()`.
 pub fn check(source: &[u8]) -> Vec<Diagnostic> {
-    let parse_result = ruby_prism::parse(source);
     let mut diagnostics = Vec::new();
 
     // Run all layout rules
-    diagnostics.extend(rules::trailing_whitespace::check(source, &parse_result));
+    rules::trailing_whitespace::check_source(source, |d| diagnostics.push(d));
 
     diagnostics
 }

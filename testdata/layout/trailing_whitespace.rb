@@ -3,8 +3,8 @@
 # This file contains trailing whitespace violations for testing
 
 class Example
-  def method_with_trailing_spaces
-    value = 42
+  def method_with_trailing_spaces   
+    value = 42   
     process(value)
   end
 
@@ -13,8 +13,7 @@ class Example
     process(value)
   end
 
-  def another_method
-    # comment with trailing space
-    result = calculate
+  def another_method_with_spaces   
+    result = compute   
   end
 end

@@ -23,7 +23,7 @@
 //! end
 //! ```
 
-use ruby_prism::{ParseResult, Visit};
+use ruby_prism::CallNode;
 
 use crate::Diagnostic;
 
@@ -46,122 +46,120 @@ const DEBUGGER_RECEIVERS: &[(&[u8], &[u8])] = &[
     (b"Pry", b"rescue"),
 ];
 
-/// Check for debugger statements in the source.
-pub fn check(source: &[u8], parse_result: &ParseResult<'_>) -> Vec<Diagnostic> {
-    let mut visitor = DebuggerVisitor {
-        source,
-        diagnostics: Vec::new(),
-    };
+/// Check a CallNode for debugger statements.
+///
+/// This is the main entry point used by reukocyte_checker.
+/// Uses a callback to report diagnostics.
+pub fn check_node<F>(source: &[u8], node: &CallNode, mut report: F)
+where
+    F: FnMut(Diagnostic),
+{
+    let method_name = node.name().as_slice();
+    let location = node.location();
 
-    visitor.visit(&parse_result.node());
-
-    visitor.diagnostics
-}
-
-struct DebuggerVisitor<'a> {
-    source: &'a [u8],
-    diagnostics: Vec<Diagnostic>,
-}
-
-impl DebuggerVisitor<'_> {
-    fn add_diagnostic(&mut self, message: String, start_offset: usize, end_offset: usize) {
-        let (line, column) = self.offset_to_line_column(start_offset);
-
-        self.diagnostics.push(Diagnostic {
-            rule: RULE_NAME,
-            message,
-            start: start_offset,
-            end: end_offset,
-            line,
-            column,
-        });
-    }
-
-    fn offset_to_line_column(&self, offset: usize) -> (usize, usize) {
-        let mut line = 1;
-        let mut column = 1;
-
-        for (i, &byte) in self.source.iter().enumerate() {
-            if i >= offset {
-                break;
-            }
-            if byte == b'\n' {
-                line += 1;
-                column = 1;
-            } else {
-                column += 1;
+    // Check for standalone debugger calls (e.g., `debugger`, `byebug`)
+    if node.receiver().is_none() {
+        for &debugger_method in STANDALONE_DEBUGGERS {
+            if method_name == debugger_method {
+                let (line, column) = offset_to_location(source, location.start_offset());
+                report(Diagnostic {
+                    rule: RULE_NAME,
+                    message: format!(
+                        "Debugger statement `{}` detected.",
+                        String::from_utf8_lossy(debugger_method)
+                    ),
+                    start: location.start_offset(),
+                    end: location.end_offset(),
+                    line,
+                    column,
+                });
+                return;
             }
         }
-
-        (line, column)
     }
-}
 
-impl Visit<'_> for DebuggerVisitor<'_> {
-    fn visit_call_node(&mut self, node: &ruby_prism::CallNode) {
-        let method_name = node.name().as_slice();
-        let location = node.location();
+    // Check for receiver.method calls (e.g., `binding.pry`)
+    if let Some(receiver) = node.receiver() {
+        let receiver_name: Option<&[u8]> = if let Some(call) = receiver.as_call_node() {
+            Some(call.name().as_slice())
+        } else if let Some(const_node) = receiver.as_constant_read_node() {
+            Some(const_node.name().as_slice())
+        } else {
+            None
+        };
 
-        // Check for standalone debugger calls (e.g., `debugger`, `byebug`)
-        if node.receiver().is_none() {
-            for &debugger_method in STANDALONE_DEBUGGERS {
-                if method_name == debugger_method {
-                    self.add_diagnostic(
-                        format!(
-                            "Debugger statement `{}` detected.",
-                            String::from_utf8_lossy(debugger_method)
+        if let Some(recv_name) = receiver_name {
+            for &(expected_recv, expected_method) in DEBUGGER_RECEIVERS {
+                if recv_name == expected_recv && method_name == expected_method {
+                    let (line, column) = offset_to_location(source, location.start_offset());
+                    report(Diagnostic {
+                        rule: RULE_NAME,
+                        message: format!(
+                            "Debugger statement `{}.{}` detected.",
+                            String::from_utf8_lossy(expected_recv),
+                            String::from_utf8_lossy(expected_method)
                         ),
-                        location.start_offset(),
-                        location.end_offset(),
-                    );
-                    // Continue visiting to find more debuggers
-                    ruby_prism::visit_call_node(self, node);
+                        start: location.start_offset(),
+                        end: location.end_offset(),
+                        line,
+                        column,
+                    });
                     return;
                 }
             }
         }
-
-        // Check for receiver.method calls (e.g., `binding.pry`)
-        if let Some(receiver) = node.receiver() {
-            let receiver_name: Option<&[u8]> = if let Some(call) = receiver.as_call_node() {
-                Some(call.name().as_slice())
-            } else if let Some(const_node) = receiver.as_constant_read_node() {
-                Some(const_node.name().as_slice())
-            } else {
-                None
-            };
-
-            if let Some(recv_name) = receiver_name {
-                for &(expected_recv, expected_method) in DEBUGGER_RECEIVERS {
-                    if recv_name == expected_recv && method_name == expected_method {
-                        self.add_diagnostic(
-                            format!(
-                                "Debugger statement `{}.{}` detected.",
-                                String::from_utf8_lossy(expected_recv),
-                                String::from_utf8_lossy(expected_method)
-                            ),
-                            location.start_offset(),
-                            location.end_offset(),
-                        );
-                        ruby_prism::visit_call_node(self, node);
-                        return;
-                    }
-                }
-            }
-        }
-
-        // Continue visiting child nodes
-        ruby_prism::visit_call_node(self, node);
     }
+}
+
+/// Convert offset to (line, column).
+fn offset_to_location(source: &[u8], offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut column = 1;
+
+    for (i, &byte) in source.iter().enumerate() {
+        if i >= offset {
+            break;
+        }
+        if byte == b'\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+
+    (line, column)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ruby_prism::Visit;
 
     fn check_source(source: &[u8]) -> Vec<Diagnostic> {
         let parse_result = ruby_prism::parse(source);
-        check(source, &parse_result)
+        let mut diagnostics = Vec::new();
+
+        struct Visitor<'a> {
+            source: &'a [u8],
+            diagnostics: Vec<Diagnostic>,
+        }
+
+        impl Visit<'_> for Visitor<'_> {
+            fn visit_call_node(&mut self, node: &CallNode) {
+                ruby_prism::visit_call_node(self, node);
+                check_node(self.source, node, |d| self.diagnostics.push(d));
+            }
+        }
+
+        let mut visitor = Visitor {
+            source,
+            diagnostics: Vec::new(),
+        };
+        visitor.visit(&parse_result.node());
+        diagnostics.extend(visitor.diagnostics);
+
+        diagnostics
     }
 
     #[test]

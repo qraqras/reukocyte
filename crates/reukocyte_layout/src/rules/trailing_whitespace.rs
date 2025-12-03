@@ -16,8 +16,6 @@
 //! end
 //! ```
 
-use ruby_prism::ParseResult;
-
 use crate::Diagnostic;
 
 const RULE_NAME: &str = "Layout/TrailingWhitespace";
@@ -25,9 +23,11 @@ const RULE_NAME: &str = "Layout/TrailingWhitespace";
 /// Check for trailing whitespace in the source.
 ///
 /// This rule doesn't need AST information - it operates on raw source bytes.
-pub fn check(source: &[u8], _parse_result: &ParseResult<'_>) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-
+/// Uses a callback to report diagnostics, enabling integration with reukocyte_checker.
+pub fn check_source<F>(source: &[u8], mut report: F)
+where
+    F: FnMut(Diagnostic),
+{
     for (line_index, line) in source.split(|&b| b == b'\n').enumerate() {
         if let Some(trailing_start) = find_trailing_whitespace(line) {
             let line_number = line_index + 1;
@@ -40,7 +40,7 @@ pub fn check(source: &[u8], _parse_result: &ParseResult<'_>) -> Vec<Diagnostic> 
                 .map(|l| l.len() + 1)
                 .sum();
 
-            diagnostics.push(Diagnostic {
+            report(Diagnostic {
                 rule: RULE_NAME,
                 message: "Trailing whitespace detected.".to_string(),
                 start: line_start + trailing_start,
@@ -50,8 +50,6 @@ pub fn check(source: &[u8], _parse_result: &ParseResult<'_>) -> Vec<Diagnostic> 
             });
         }
     }
-
-    diagnostics
 }
 
 /// Find the start position of trailing whitespace in a line.
@@ -64,9 +62,6 @@ fn find_trailing_whitespace(line: &[u8]) -> Option<usize> {
         .unwrap_or(0);
 
     if trimmed_len < line.len() && !line.is_empty() {
-        // Check if the entire line is not just whitespace
-        // (we don't flag blank lines with only whitespace in some configs,
-        // but for now we flag all trailing whitespace)
         Some(trimmed_len)
     } else {
         None
@@ -77,22 +72,23 @@ fn find_trailing_whitespace(line: &[u8]) -> Option<usize> {
 mod tests {
     use super::*;
 
-    fn check_source(source: &[u8]) -> Vec<Diagnostic> {
-        let parse_result = ruby_prism::parse(source);
-        check(source, &parse_result)
+    fn check_source_vec(source: &[u8]) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        check_source(source, |d| diagnostics.push(d));
+        diagnostics
     }
 
     #[test]
     fn test_no_trailing_whitespace() {
         let source = b"def foo\n  bar\nend\n";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert!(diagnostics.is_empty());
     }
 
     #[test]
     fn test_trailing_spaces() {
         let source = b"def foo  \n  bar\nend\n";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].line, 1);
         assert_eq!(diagnostics[0].column, 8); // After "def foo"
@@ -101,7 +97,7 @@ mod tests {
     #[test]
     fn test_trailing_tab() {
         let source = b"def foo\t\n  bar\nend\n";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].line, 1);
     }
@@ -109,7 +105,7 @@ mod tests {
     #[test]
     fn test_multiple_lines_with_trailing() {
         let source = b"def foo  \n  bar  \nend\n";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert_eq!(diagnostics.len(), 2);
         assert_eq!(diagnostics[0].line, 1);
         assert_eq!(diagnostics[1].line, 2);
@@ -118,14 +114,14 @@ mod tests {
     #[test]
     fn test_empty_file() {
         let source = b"";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert!(diagnostics.is_empty());
     }
 
     #[test]
     fn test_whitespace_only_line() {
         let source = b"def foo\n   \nend\n";
-        let diagnostics = check_source(source);
+        let diagnostics = check_source_vec(source);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].line, 2);
     }

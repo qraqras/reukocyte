@@ -18,12 +18,34 @@ pub struct Diagnostic {
 }
 
 /// Check a Ruby source file for lint violations.
+///
+/// Note: This is kept for backwards compatibility and testing.
+/// The main entry point is now `reukocyte_checker::check()`.
 pub fn check(source: &[u8]) -> Vec<Diagnostic> {
+    use ruby_prism::Visit;
+
     let parse_result = ruby_prism::parse(source);
     let mut diagnostics = Vec::new();
 
-    // Run all lint rules
-    diagnostics.extend(rules::debugger::check(source, &parse_result));
+    // Create a visitor that collects diagnostics
+    struct Visitor<'a> {
+        source: &'a [u8],
+        diagnostics: Vec<Diagnostic>,
+    }
+
+    impl Visit<'_> for Visitor<'_> {
+        fn visit_call_node(&mut self, node: &ruby_prism::CallNode) {
+            ruby_prism::visit_call_node(self, node);
+            rules::debugger::check_node(self.source, node, |d| self.diagnostics.push(d));
+        }
+    }
+
+    let mut visitor = Visitor {
+        source,
+        diagnostics: Vec::new(),
+    };
+    visitor.visit(&parse_result.node());
+    diagnostics.extend(visitor.diagnostics);
 
     diagnostics
 }
