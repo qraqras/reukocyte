@@ -7,8 +7,9 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "reukocyte"
+name = "rueko"
 path = "src/main.rs"
 
 [dependencies]
 reukocyte_checker.workspace = true
+clap = { version = "4", features = ["derive"] }

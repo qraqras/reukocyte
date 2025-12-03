@@ -1,9 +1,17 @@
+use std::fmt;
+
 /// Unique identifier for a rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RuleId {
     Layout(LayoutRule),
     Lint(LintRule),
 }
+impl fmt::Display for RuleId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.category().as_str(), self.name())
+    }
+}
+
 impl RuleId {
     /// Get the category of the rule.
     pub const fn category(&self) -> Category {

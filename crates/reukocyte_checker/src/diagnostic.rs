@@ -43,11 +43,7 @@ impl Diagnostic {
     }
     /// Get the rule name as a string (for API compatibility).
     pub fn rule(&self) -> String {
-        format!(
-            "{}/{}",
-            self.rule_id.category().as_str(),
-            self.rule_id.name()
-        )
+        format!("{}", self.rule_id)
     }
     /// Set a fix for the diagnostic.
     pub fn set_fix(&mut self, fix: Fix) {
@@ -66,6 +62,7 @@ impl Diagnostic {
 /// Severity level for a diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Severity {
+    Info,
     Refactor,
     #[default]
     Convention,
@@ -77,11 +74,23 @@ impl Severity {
     /// Get the string representation of the severity.
     pub fn as_str(&self) -> &'static str {
         match self {
+            Severity::Info => "info",
             Severity::Refactor => "refactor",
             Severity::Convention => "convention",
             Severity::Warning => "warning",
             Severity::Error => "error",
             Severity::Fatal => "fatal",
+        }
+    }
+    /// Get the short code for this severity (used in RuboCop output).
+    pub fn code(&self) -> char {
+        match self {
+            Severity::Info => 'I',
+            Severity::Refactor => 'R',
+            Severity::Convention => 'C',
+            Severity::Warning => 'W',
+            Severity::Error => 'E',
+            Severity::Fatal => 'F',
         }
     }
 }

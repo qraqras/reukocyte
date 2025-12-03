@@ -1,7 +1,9 @@
 use crate::conflict::ConflictRegistry;
 use crate::corrector;
 use crate::corrector::Corrector;
+use crate::rule::RuleId;
 use crate::{Diagnostic, check};
+use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -12,26 +14,65 @@ const MAX_ITERATIONS: usize = 200;
 /// Error indicating that the autocorrection loop got stuck.
 #[derive(Debug, Clone)]
 pub struct InfiniteCorrectionLoop {
-    /// The iteration at which the loop was detected.
-    pub iteration: usize,
-    /// The iteration where the loop started (if detected via checksum).
-    pub loop_start: Option<usize>,
+    pub path: Option<String>,         // Optional file path
+    pub iteration: usize,             // Current iteration count
+    pub loop_start: Option<usize>,    // Where the loop started, if known
+    pub offending_rules: Vec<String>, // Rules that caused the loop
 }
+
+impl InfiniteCorrectionLoop {
+    /// Create a new InfiniteCorrectionLoop error.
+    fn new(
+        path: Option<&str>,
+        iteration: usize,
+        loop_start: Option<usize>,
+        rules_by_iteration: &[HashSet<RuleId>],
+    ) -> Self {
+        // Extract the offending rules from the loop iterations
+        let offending_rules = if let Some(start) = loop_start {
+            rules_by_iteration[start..]
+                .iter()
+                .flat_map(|rules| rules.iter().map(|r| r.to_string()))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+        // Deduplicate while preserving order
+        let mut seen = HashSet::new();
+        let offending_rules: Vec<String> = offending_rules
+            .into_iter()
+            .filter(|r| seen.insert(r.clone()))
+            .collect();
+        Self {
+            path: path.map(|s| s.to_string()),
+            iteration,
+            loop_start,
+            offending_rules,
+        }
+    }
+}
+
 impl std::fmt::Display for InfiniteCorrectionLoop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(start) = self.loop_start {
-            write!(
-                f,
-                "Infinite correction loop detected: iteration {} produced the same source as iteration {}",
-                self.iteration, start
-            )
-        } else {
-            write!(
-                f,
-                "Infinite correction loop detected: exceeded {} iterations",
-                MAX_ITERATIONS
-            )
+        write!(f, "Infinite loop detected")?;
+
+        if let Some(path) = &self.path {
+            write!(f, " in {}", path)?;
         }
+
+        if !self.offending_rules.is_empty() {
+            write!(f, " and caused by {}", self.offending_rules.join(" -> "))?;
+        } else if let Some(start) = self.loop_start {
+            write!(
+                f,
+                ": iteration {} produced the same source as iteration {}",
+                self.iteration, start
+            )?;
+        } else {
+            write!(f, ": exceeded {} iterations", MAX_ITERATIONS)?;
+        }
+
+        Ok(())
     }
 }
 impl std::error::Error for InfiniteCorrectionLoop {}
@@ -55,6 +96,7 @@ fn checksum(source: &[u8]) -> u64 {
 ///
 /// # Arguments
 ///
+/// * `path` - Optional file path for error reporting (RuboCop compatible)
 /// * `source` - The original source code
 /// * `diagnostics` - The initial diagnostics with fixes to apply
 /// * `unsafe_fixes` - Whether to apply unsafe fixes
@@ -63,11 +105,12 @@ fn checksum(source: &[u8]) -> u64 {
 ///
 /// A tuple of (corrected source, total number of fixes applied)
 pub fn apply_fixes(
+    path: Option<&str>,
     source: &[u8],
     diagnostics: &[Diagnostic],
     unsafe_fixes: bool,
 ) -> (Vec<u8>, usize) {
-    match apply_fixes_with_loop_detection(source, diagnostics, unsafe_fixes) {
+    match apply_fixes_with_loop_detection(path, source, diagnostics, unsafe_fixes) {
         Ok((source, count)) => (source, count),
         Err(err) => {
             // Log the error but return what we have
@@ -80,7 +123,10 @@ pub fn apply_fixes(
 /// Apply fixes with infinite loop detection.
 ///
 /// Returns an error if an infinite loop is detected.
+/// The error includes the file path and the rules that caused the loop,
+/// matching RuboCop's `InfiniteCorrectionLoop` behavior.
 pub fn apply_fixes_with_loop_detection(
+    path: Option<&str>,
     source: &[u8],
     diagnostics: &[Diagnostic],
     unsafe_fixes: bool,
@@ -92,20 +138,26 @@ pub fn apply_fixes_with_loop_detection(
     // Track checksums to detect loops (A -> B -> A pattern)
     let mut seen_checksums: Vec<u64> = Vec::new();
 
+    // Track which rules were applied in each iteration (for error reporting)
+    let mut rules_by_iteration: Vec<HashSet<RuleId>> = Vec::new();
+
     for iteration in 0..MAX_ITERATIONS {
         // Check for infinite loop via checksum
         let current_checksum = checksum(&current_source);
         if let Some(loop_start) = seen_checksums.iter().position(|&c| c == current_checksum) {
-            return Err(InfiniteCorrectionLoop {
+            return Err(InfiniteCorrectionLoop::new(
+                path,
                 iteration,
-                loop_start: Some(loop_start),
-            });
+                Some(loop_start),
+                &rules_by_iteration,
+            ));
         }
         seen_checksums.push(current_checksum);
 
         // Create a new Corrector and ConflictRegistry for this iteration
         let mut corrector = Corrector::new();
         let mut conflict_registry = ConflictRegistry::new();
+        let mut applied_rules_this_iteration: HashSet<RuleId> = HashSet::new();
 
         // Try to merge all applicable fixes
         for diagnostic in &current_diagnostics {
@@ -123,9 +175,14 @@ pub fn apply_fixes_with_loop_detection(
                 if corrector.merge(fix).is_ok() {
                     // Mark this rule as applied for conflict checking
                     conflict_registry.mark_applied(diagnostic.rule_id);
+                    applied_rules_this_iteration.insert(diagnostic.rule_id);
                 }
             }
         }
+
+        // Record which rules were applied this iteration
+        rules_by_iteration.push(applied_rules_this_iteration);
+
         if corrector.is_empty() {
             // No more fixes to apply
             break;
@@ -148,21 +205,24 @@ pub fn apply_fixes_with_loop_detection(
 
     // If we exhausted iterations, that's also a loop
     if seen_checksums.len() >= MAX_ITERATIONS {
-        return Err(InfiniteCorrectionLoop {
-            iteration: MAX_ITERATIONS,
-            loop_start: None,
-        });
+        return Err(InfiniteCorrectionLoop::new(
+            path,
+            MAX_ITERATIONS,
+            None,
+            &rules_by_iteration,
+        ));
     }
     Ok((current_source, total_fixed))
 }
 
 /// Apply fixes and return the result along with remaining diagnostics.
 pub fn apply_fixes_with_remaining(
+    path: Option<&str>,
     source: &[u8],
     diagnostics: &[Diagnostic],
     unsafe_fixes: bool,
 ) -> (Vec<u8>, Vec<Diagnostic>, usize) {
-    let (fixed_source, fix_count) = apply_fixes(source, diagnostics, unsafe_fixes);
+    let (fixed_source, fix_count) = apply_fixes(path, source, diagnostics, unsafe_fixes);
     // Re-check to get remaining diagnostics
     let remaining = check(&fixed_source);
     (fixed_source, remaining, fix_count)
@@ -181,7 +241,7 @@ mod tests {
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].fix.is_some());
 
-        let (fixed, count) = apply_fixes(source, &diagnostics, false);
+        let (fixed, count) = apply_fixes(None, source, &diagnostics, false);
 
         assert_eq!(count, 1);
         assert_eq!(fixed, b"def foo\n  bar\nend\n");
@@ -194,7 +254,7 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 2);
 
-        let (fixed, count) = apply_fixes(source, &diagnostics, false);
+        let (fixed, count) = apply_fixes(None, source, &diagnostics, false);
 
         assert_eq!(count, 2);
         assert_eq!(fixed, b"def foo\n  bar\nend\n");
@@ -208,7 +268,7 @@ mod tests {
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].fix.is_none());
 
-        let (fixed, count) = apply_fixes(source, &diagnostics, false);
+        let (fixed, count) = apply_fixes(None, source, &diagnostics, false);
 
         assert_eq!(count, 0);
         assert_eq!(fixed, source);
@@ -222,7 +282,7 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 2);
 
-        let (fixed, count) = apply_fixes(source, &diagnostics, false);
+        let (fixed, count) = apply_fixes(None, source, &diagnostics, false);
 
         assert_eq!(count, 1); // Only trailing whitespace fixed
         assert_eq!(fixed, b"def foo\n  binding.pry\nend\n");
@@ -233,7 +293,8 @@ mod tests {
         let source = b"def foo  \n  binding.pry\nend\n";
         let diagnostics = check(source);
 
-        let (fixed, remaining, count) = apply_fixes_with_remaining(source, &diagnostics, false);
+        let (fixed, remaining, count) =
+            apply_fixes_with_remaining(None, source, &diagnostics, false);
 
         assert_eq!(count, 1);
         assert_eq!(fixed, b"def foo\n  binding.pry\nend\n");
@@ -248,7 +309,7 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 1);
 
-        let (fixed, count) = apply_fixes(source, &diagnostics, false);
+        let (fixed, count) = apply_fixes(None, source, &diagnostics, false);
 
         assert_eq!(count, 1);
         assert_eq!(fixed, b"def foo\n\nend\n");
@@ -337,19 +398,46 @@ mod loop_detection_tests {
     }
 
     #[test]
-    fn test_infinite_loop_error_display() {
+    fn test_infinite_loop_error_display_with_path() {
         let err = InfiniteCorrectionLoop {
+            path: Some("example.rb".to_string()),
             iteration: 5,
             loop_start: Some(2),
+            offending_rules: vec![
+                "Layout/TrailingWhitespace".to_string(),
+                "Lint/Debugger".to_string(),
+            ],
         };
-        assert!(err.to_string().contains("iteration 5"));
-        assert!(err.to_string().contains("iteration 2"));
+        let msg = err.to_string();
+        assert!(msg.contains("example.rb"));
+        assert!(msg.contains("Layout/TrailingWhitespace -> Lint/Debugger"));
+    }
 
-        let err_max = InfiniteCorrectionLoop {
+    #[test]
+    fn test_infinite_loop_error_display_without_path() {
+        let err = InfiniteCorrectionLoop {
+            path: None,
+            iteration: 5,
+            loop_start: Some(2),
+            offending_rules: vec![],
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Infinite loop detected"));
+        assert!(msg.contains("iteration 5"));
+        assert!(msg.contains("iteration 2"));
+    }
+
+    #[test]
+    fn test_infinite_loop_error_display_max_iterations() {
+        let err = InfiniteCorrectionLoop {
+            path: Some("test.rb".to_string()),
             iteration: 200,
             loop_start: None,
+            offending_rules: vec![],
         };
-        assert!(err_max.to_string().contains("200"));
+        let msg = err.to_string();
+        assert!(msg.contains("test.rb"));
+        assert!(msg.contains("200"));
     }
 
     #[test]
@@ -357,7 +445,7 @@ mod loop_detection_tests {
         let source = b"def foo  \nend\n";
         let diagnostics = check(source);
 
-        let result = apply_fixes_with_loop_detection(source, &diagnostics, false);
+        let result = apply_fixes_with_loop_detection(Some("test.rb"), source, &diagnostics, false);
         assert!(result.is_ok());
 
         let (fixed, count) = result.unwrap();
