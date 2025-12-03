@@ -1,20 +1,24 @@
-//! Reukocyte Checker
-//!
-//! The main checker that coordinates parsing and rule execution.
-//! Inspired by Ruff's architecture - single AST traversal for all rules.
-
 mod analyze;
 mod checker;
+mod conflict;
+mod corrector;
 mod diagnostic;
 mod fix;
 mod locator;
+mod rule;
+
 pub mod rules;
 
-pub use locator::LineIndex;
-
 pub use checker::Checker;
+pub use conflict::ConflictRegistry;
+pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
-pub use fix::{apply_fixes, apply_fixes_with_remaining};
+pub use fix::{
+    InfiniteCorrectionLoop, apply_fixes, apply_fixes_with_loop_detection,
+    apply_fixes_with_remaining,
+};
+pub use locator::LineIndex;
+pub use rule::{Category, LayoutRule, LintRule, RuleId};
 
 use ruby_prism::Visit;
 
@@ -60,7 +64,7 @@ mod tests {
         let source = b"def foo  \n  bar\nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule, "Layout/TrailingWhitespace");
+        assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
     }
 
     #[test]
@@ -68,7 +72,7 @@ mod tests {
         let source = b"def foo\n  binding.pry\nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule, "Lint/Debugger");
+        assert_eq!(diagnostics[0].rule(), "Lint/Debugger");
     }
 
     #[test]
@@ -77,7 +81,7 @@ mod tests {
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 2);
         // Should be sorted by line/column
-        assert_eq!(diagnostics[0].rule, "Layout/TrailingWhitespace");
-        assert_eq!(diagnostics[1].rule, "Lint/Debugger");
+        assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
+        assert_eq!(diagnostics[1].rule(), "Lint/Debugger");
     }
 }

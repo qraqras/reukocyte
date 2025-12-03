@@ -1,34 +1,10 @@
-//! Lint/Debugger
-//!
-//! Detects debugger statements left in the code.
-//!
-//! # Examples
-//!
-//! ```ruby
-//! # bad
-//! def foo
-//!   binding.pry
-//!   do_something
-//! end
-//!
-//! # bad
-//! def bar
-//!   debugger
-//!   do_something
-//! end
-//!
-//! # good
-//! def foo
-//!   do_something
-//! end
-//! ```
-
-use ruby_prism::CallNode;
-
 use crate::Checker;
 use crate::Severity;
+use crate::rule::{LintRule, RuleId};
+use ruby_prism::CallNode;
 
-const RULE_NAME: &str = "Lint/Debugger";
+/// Rule identifier for Lint/Debugger.
+pub const RULE_ID: RuleId = RuleId::Lint(LintRule::Debugger);
 
 /// Standalone debugger method names to detect (no receiver)
 const STANDALONE_DEBUGGERS: &[&[u8]] = &[b"debugger", b"byebug", b"remote_byebug"];
@@ -57,7 +33,7 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
         for &debugger_method in STANDALONE_DEBUGGERS {
             if method_name == debugger_method {
                 checker.report(
-                    RULE_NAME,
+                    RULE_ID,
                     format!(
                         "Debugger statement `{}` detected.",
                         String::from_utf8_lossy(debugger_method)
@@ -86,7 +62,7 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
             for &(expected_recv, expected_method) in DEBUGGER_RECEIVERS {
                 if recv_name == expected_recv && method_name == expected_method {
                     checker.report(
-                        RULE_NAME,
+                        RULE_ID,
                         format!(
                             "Debugger statement `{}.{}` detected.",
                             String::from_utf8_lossy(expected_recv),
@@ -120,7 +96,7 @@ mod tests {
         let source = b"def foo\n  binding.pry\nend\n";
         let diagnostics = check(source);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule, "Lint/Debugger");
+        assert_eq!(diagnostics[0].rule(), "Lint/Debugger");
         assert!(diagnostics[0].message.contains("binding.pry"));
     }
 

@@ -1,9 +1,6 @@
-//! Run lint rules over a CallNode.
-
-use ruby_prism::CallNode;
-
 use crate::checker::Checker;
 use crate::rules;
+use ruby_prism::CallNode;
 
 /// Run lint rules over a [`CallNode`] syntax node.
 pub(crate) fn call_node(node: &CallNode, checker: &mut Checker) {

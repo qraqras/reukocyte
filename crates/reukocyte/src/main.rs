@@ -93,7 +93,11 @@ fn check_file(path: &str, source: &[u8], fix_mode: bool) -> (usize, usize) {
         for d in &remaining {
             println!(
                 "{}:{}:{}: {}: {}",
-                path, d.line_start, d.column_start, d.rule, d.message
+                path,
+                d.line_start,
+                d.column_start,
+                d.rule(),
+                d.message
             );
         }
 
@@ -103,7 +107,11 @@ fn check_file(path: &str, source: &[u8], fix_mode: bool) -> (usize, usize) {
         for d in &diagnostics {
             println!(
                 "{}:{}:{}: {}: {}",
-                path, d.line_start, d.column_start, d.rule, d.message
+                path,
+                d.line_start,
+                d.column_start,
+                d.rule(),
+                d.message
             );
         }
 

@@ -1,7 +1,9 @@
+use crate::rule::RuleId;
+
 /// Diagnostic information for a code issue.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
-    pub rule: &'static str,  // Rule identifier
+    pub rule_id: RuleId,     // Rule identifier (typed)
     pub message: String,     // Description of the issue
     pub severity: Severity,  // Severity level of the issue
     pub start: usize,        // Start byte offset
@@ -15,7 +17,7 @@ pub struct Diagnostic {
 impl Diagnostic {
     /// Create a new diagnostic.
     pub fn new(
-        rule: &'static str,
+        rule_id: RuleId,
         message: String,
         severity: Severity,
         start: usize,
@@ -27,7 +29,7 @@ impl Diagnostic {
         fix: Option<Fix>,
     ) -> Self {
         Self {
-            rule,
+            rule_id,
             message,
             severity,
             start,
@@ -38,6 +40,14 @@ impl Diagnostic {
             column_end,
             fix,
         }
+    }
+    /// Get the rule name as a string (for API compatibility).
+    pub fn rule(&self) -> String {
+        format!(
+            "{}/{}",
+            self.rule_id.category().as_str(),
+            self.rule_id.name()
+        )
     }
     /// Set a fix for the diagnostic.
     pub fn set_fix(&mut self, fix: Fix) {

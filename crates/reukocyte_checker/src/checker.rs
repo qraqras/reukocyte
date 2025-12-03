@@ -1,5 +1,6 @@
 use crate::analyze;
 use crate::locator::LineIndex;
+use crate::rule::RuleId;
 use crate::{Diagnostic, Fix, Severity};
 use ruby_prism::Visit;
 use std::cell::OnceCell;
@@ -29,7 +30,7 @@ impl<'rk> Checker<'rk> {
     /// Create and push a diagnostic. Line/column are calculated from offsets.
     pub fn report(
         &mut self,
-        rule: &'static str,
+        rule_id: RuleId,
         message: String,
         severity: Severity,
         start_offset: usize,
@@ -43,7 +44,7 @@ impl<'rk> Checker<'rk> {
         let (line_end, column_end) = index.line_column(end_offset);
 
         self.diagnostics.push(Diagnostic::new(
-            rule,
+            rule_id,
             message,
             severity,
             start_offset,

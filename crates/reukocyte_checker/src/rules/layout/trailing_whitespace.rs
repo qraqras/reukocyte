@@ -21,8 +21,10 @@ use crate::Diagnostic;
 use crate::Edit;
 use crate::Fix;
 use crate::Severity;
+use crate::rule::{LayoutRule, RuleId};
 
-const RULE_NAME: &str = "Layout/TrailingWhitespace";
+/// Rule identifier for Layout/TrailingWhitespace.
+pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
 
 /// Check for trailing whitespace in the source.
 ///
@@ -60,7 +62,7 @@ fn check_source(source: &[u8]) -> Vec<Diagnostic> {
             let fix = Fix::safe(vec![Edit::deletion(start, end)]);
 
             diagnostics.push(Diagnostic::new(
-                RULE_NAME,
+                RULE_ID,
                 "Trailing whitespace detected.".to_string(),
                 Severity::Convention,
                 start,
