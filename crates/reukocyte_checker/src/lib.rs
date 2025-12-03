@@ -3,9 +3,12 @@
 //! The main checker that coordinates parsing and rule execution.
 //! Inspired by Ruff's architecture - single AST traversal for all rules.
 
-mod analyze;
 mod checker;
 mod diagnostic;
+mod locator;
+pub mod rules;
+
+pub use locator::LineIndex;
 
 pub use checker::Checker;
 pub use diagnostic::Diagnostic;
@@ -23,16 +26,7 @@ pub fn check(source: &[u8]) -> Vec<Diagnostic> {
     let mut checker = Checker::new(source);
 
     // Run line-based rules (no AST needed)
-    reukocyte_layout::rules::trailing_whitespace::check_source(source, |d| {
-        checker.add_diagnostic(Diagnostic {
-            rule: d.rule,
-            message: d.message,
-            start: d.start,
-            end: d.end,
-            line: d.line,
-            column: d.column,
-        });
-    });
+    rules::layout::trailing_whitespace::check(&mut checker);
 
     // Run AST-based rules (single traversal)
     checker.visit(&parse_result.node());
@@ -57,6 +51,7 @@ mod tests {
         let diagnostics = check(source);
         assert!(diagnostics.is_empty());
     }
+
 
     #[test]
     fn test_check_trailing_whitespace() {
@@ -84,4 +79,3 @@ mod tests {
         assert_eq!(diagnostics[1].rule, "Lint/Debugger");
     }
 }
-

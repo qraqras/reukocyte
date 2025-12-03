@@ -3,17 +3,22 @@
 //! Inspired by Ruff's Checker, this struct:
 //! - Holds the source and diagnostics
 //! - Implements the Visit trait for AST traversal
-//! - Calls analyze functions at each node
+//! - Calls rule functions directly at each node
+
+use std::cell::OnceCell;
 
 use ruby_prism::Visit;
 
-use crate::analyze;
+use crate::locator::LineIndex;
+use crate::rules;
 use crate::Diagnostic;
 
 /// The main checker that traverses the AST and runs rules.
 pub struct Checker<'a> {
     /// The source code being checked
     source: &'a [u8],
+    /// Line index for fast offset to location conversion (lazily initialized)
+    line_index: OnceCell<LineIndex>,
     /// Collected diagnostics
     diagnostics: Vec<Diagnostic>,
 }
@@ -23,6 +28,7 @@ impl<'a> Checker<'a> {
     pub fn new(source: &'a [u8]) -> Self {
         Self {
             source,
+            line_index: OnceCell::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -32,29 +38,19 @@ impl<'a> Checker<'a> {
         self.source
     }
 
-    /// Add a diagnostic.
-    pub fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
+    /// Push a diagnostic (Ruff-style API).
+    pub fn push_diagnostic(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
     }
 
-    /// Convert offset to (line, column).
+    /// Convert offset to (line, column) using lazily-initialized line index.
+    /// The line index is built on first call, then reused.
+    /// Uses binary search for O(log n) performance.
+    #[inline]
     pub fn offset_to_location(&self, offset: usize) -> (usize, usize) {
-        let mut line = 1;
-        let mut column = 1;
-
-        for (i, &byte) in self.source.iter().enumerate() {
-            if i >= offset {
-                break;
-            }
-            if byte == b'\n' {
-                line += 1;
-                column = 1;
-            } else {
-                column += 1;
-            }
-        }
-
-        (line, column)
+        self.line_index
+            .get_or_init(|| LineIndex::from_source(self.source))
+            .line_column(offset)
     }
 
     /// Consume the checker and return the diagnostics.
@@ -67,10 +63,11 @@ impl<'a> Checker<'a> {
 
 impl Visit<'_> for Checker<'_> {
     fn visit_call_node(&mut self, node: &ruby_prism::CallNode) {
-        // Step 2: Traversal (visit children first)
+        // Visit children first
         ruby_prism::visit_call_node(self, node);
 
-        // Step 4: Analysis (run rules)
-        analyze::expression::call(self, node);
+        // Run rules directly (Ruff-style)
+        rules::lint::debugger::check(self, node);
     }
 }
+
