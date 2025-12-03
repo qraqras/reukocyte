@@ -1,5 +1,40 @@
 use crate::rule::RuleId;
 
+/// Raw diagnostic without line/column information (for deferred resolution).
+#[derive(Debug, Clone)]
+pub struct RawDiagnostic {
+    pub rule_id: RuleId,
+    pub message: String,
+    pub severity: Severity,
+    pub start: usize,
+    pub end: usize,
+    pub fix: Option<Fix>,
+}
+impl RawDiagnostic {
+    /// Convert to full Diagnostic with resolved line/column.
+    #[inline]
+    pub fn resolve(
+        self,
+        line_start: usize,
+        line_end: usize,
+        column_start: usize,
+        column_end: usize,
+    ) -> Diagnostic {
+        Diagnostic {
+            rule_id: self.rule_id,
+            message: self.message,
+            severity: self.severity,
+            start: self.start,
+            end: self.end,
+            line_start,
+            line_end,
+            column_start,
+            column_end,
+            fix: self.fix,
+        }
+    }
+}
+
 /// Diagnostic information for a code issue.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {

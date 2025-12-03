@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 reukocyte_checker.workspace = true
+ruby-prism.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

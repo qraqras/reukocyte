@@ -1,3 +1,4 @@
+#![allow(unused_variables)]
 use crate::checker::Checker;
 use crate::rules;
 use ruby_prism::CallNode;

@@ -1,4 +1,4 @@
-//! Utility functions for reukocyte_checker.
+use ruby_prism::Node;
 
 /// Check if a character is a blank character (RuboCop's `[[:blank:]]`).
 ///
@@ -20,6 +20,8 @@
 pub fn is_blank(c: char) -> bool {
     matches!(c, ' ' | '\t' | '\u{3000}')
 }
+
+pub fn first_part_of_call_chain(node: &Node) -> Node {}
 
 #[cfg(test)]
 mod tests {

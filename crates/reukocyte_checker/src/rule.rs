@@ -36,6 +36,11 @@ impl RuleId {
     /// This is equivalent to RuboCop's `autocorrect_incompatible_with`.
     pub const fn conflicts_with(&self) -> &'static [RuleId] {
         match self {
+            Self::Layout(LayoutRule::EmptyLines) => &[],
+            Self::Layout(LayoutRule::IndentationStyle) => &[],
+            Self::Layout(LayoutRule::IndentationWidth) => &[],
+            Self::Layout(LayoutRule::LeadingEmptyLines) => &[],
+            Self::Layout(LayoutRule::TrailingEmptyLines) => &[],
             Self::Layout(LayoutRule::TrailingWhitespace) => &[],
             Self::Lint(LintRule::Debugger) => &[],
         }
@@ -65,12 +70,22 @@ impl Category {
 /// Layout rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum LayoutRule {
+    EmptyLines,
+    IndentationStyle,
+    IndentationWidth,
+    LeadingEmptyLines,
+    TrailingEmptyLines,
     TrailingWhitespace,
 }
 impl LayoutRule {
     /// Get the rule name.
     pub const fn name(&self) -> &'static str {
         match self {
+            Self::EmptyLines => "EmptyLines",
+            Self::IndentationStyle => "IndentationStyle",
+            Self::IndentationWidth => "IndentationWidth",
+            Self::LeadingEmptyLines => "LeadingEmptyLines",
+            Self::TrailingEmptyLines => "TrailingEmptyLines",
             Self::TrailingWhitespace => "TrailingWhitespace",
         }
     }

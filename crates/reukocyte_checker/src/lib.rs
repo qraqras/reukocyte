@@ -38,6 +38,10 @@ pub fn check(source: &[u8]) -> Vec<Diagnostic> {
 
     // Run line-based rules (after AST, can use collected info)
     rules::layout::trailing_whitespace::check(&mut checker);
+    rules::layout::trailing_empty_lines::check(&mut checker);
+    rules::layout::leading_empty_lines::check(&mut checker);
+    rules::layout::empty_lines::check(&mut checker);
+    rules::layout::indentation_style::check(&mut checker);
 
     checker.into_diagnostics()
 }

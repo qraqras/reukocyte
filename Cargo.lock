@@ -591,6 +591,7 @@ version = "0.0.1"
 dependencies = [
  "criterion",
  "reukocyte_checker",
+ "ruby-prism",
 ]
 
 [[package]]

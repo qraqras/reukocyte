@@ -107,7 +107,7 @@
   - [ ] Layout/SpaceInsideReferenceBrackets
   - [ ] Layout/SpaceInsideStringInterpolation
   - [ ] Layout/TrailingEmptyLines
-  - [ ] Layout/TrailingWhitespace
+  - [ x ] Layout/TrailingWhitespace
   - [ ] AllowMultilineFinalElement
 
 ## プロジェクトの全体像
@@ -119,7 +119,7 @@
 - RuboCopに追従するために、機能は少ないほうが良いと考えています
 - 関心の中心はLayoutであり、Lintは主要なものに限定して提供します
 - RuboCopとのAPI互換は必須です
-- RuboCopの設計や実装について互換性を保つ必要はありません
+- RuboCopの設計や実装について互換性を保つ必要はありません(Copのロジックは踏襲します)
 - CLIツールとして開発します(gemでの提供は将来的に検討します)
 ### 数値目標
 - RuboCopのサーバモードと比較して少なくとも40倍高速であることを目指します

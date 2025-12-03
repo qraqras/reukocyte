@@ -6,7 +6,7 @@ pub struct LineIndex {
 impl LineIndex {
     /// Build a LineIndex from source bytes.
     pub fn from_source(source: &[u8]) -> Self {
-        let mut line_starts = Vec::with_capacity(source.len() / 120); // Rough estimate
+        let mut line_starts = Vec::with_capacity(source.len() / 80); // Rough estimate
         line_starts.push(0);
         for (i, &byte) in source.iter().enumerate() {
             if byte == b'\n' {
@@ -34,6 +34,45 @@ impl LineIndex {
         let line_start = self.line_starts[line_index];
         (line_index + 1, offset - line_start + 1)
     }
+
+    /// Batch resolve sorted offsets to (line, column) pairs.
+    /// Optimized for sequential access - O(n) instead of O(n log n).
+    #[inline]
+    pub fn batch_line_column(&self, offsets: &[(usize, usize)]) -> Vec<(usize, usize, usize, usize)> {
+        let mut results = Vec::with_capacity(offsets.len());
+        let mut current_line_idx = 0;
+        let line_count = self.line_starts.len();
+
+        for &(start, end) in offsets {
+            // Advance to the correct line for start offset
+            while current_line_idx + 1 < line_count
+                && self.line_starts[current_line_idx + 1] <= start
+            {
+                current_line_idx += 1;
+            }
+
+            let line_start_offset = self.line_starts[current_line_idx];
+            let line_start = current_line_idx + 1;
+            let column_start = start - line_start_offset + 1;
+
+            // Find line for end offset (usually same line or close)
+            let mut end_line_idx = current_line_idx;
+            while end_line_idx + 1 < line_count
+                && self.line_starts[end_line_idx + 1] <= end
+            {
+                end_line_idx += 1;
+            }
+
+            let end_line_start_offset = self.line_starts[end_line_idx];
+            let line_end = end_line_idx + 1;
+            let column_end = end - end_line_start_offset + 1;
+
+            results.push((line_start, line_end, column_start, column_end));
+        }
+
+        results
+    }
+
     /// Get the byte offset of a line start (0-indexed line).
     pub fn line_start(&self, line_index: usize) -> Option<usize> {
         self.line_starts.get(line_index).copied()

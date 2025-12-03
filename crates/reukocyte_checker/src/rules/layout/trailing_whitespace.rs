@@ -3,7 +3,6 @@ use crate::Edit;
 use crate::Fix;
 use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
-use crate::utils::is_blank;
 
 /// Rule identifier for Layout/TrailingWhitespace.
 pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
@@ -33,7 +32,7 @@ fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize)> {
     let mut ranges = Vec::new();
     let mut offset = 0;
     for line in source.split(|&b| b == b'\n') {
-        if let Some(trailing_start) = find_trailing_whitespace(line) {
+        if let Some(trailing_start) = find_trailing_whitespace_fast(line) {
             let start = offset + trailing_start;
             let end = offset + line.len();
             ranges.push((start, end));
@@ -43,23 +42,39 @@ fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize)> {
     ranges
 }
 
-/// Find the start position of trailing whitespace in a line.
-/// Returns `None` if there is no trailing whitespace or invalid UTF-8.
-fn find_trailing_whitespace(line: &[u8]) -> Option<usize> {
-    let line_str = std::str::from_utf8(line).ok()?;
-
-    let trimmed_len = line_str
-        .char_indices()
-        .rev()
-        .find(|(_, c)| !is_blank(*c))
-        .map(|(pos, c)| pos + c.len_utf8())
-        .unwrap_or(0);
-
-    if trimmed_len < line.len() && !line.is_empty() {
-        Some(trimmed_len)
-    } else {
-        None
+/// Fast byte-level detection of trailing whitespace.
+/// RuboCop's [[:blank:]] = space (0x20), tab (0x09), fullwidth space (U+3000 = 0xE3 0x80 0x80)
+///
+/// Optimized: scan backwards byte-by-byte, only decode UTF-8 when needed.
+#[inline]
+fn find_trailing_whitespace_fast(line: &[u8]) -> Option<usize> {
+    if line.is_empty() {
+        return None;
     }
+
+    let len = line.len();
+    let mut pos = len;
+
+    // Scan backwards
+    while pos > 0 {
+        let b = line[pos - 1];
+
+        match b {
+            // ASCII space or tab - continue scanning
+            b' ' | b'\t' => {
+                pos -= 1;
+            }
+            // Potential fullwidth space end byte (0x80)
+            // Fullwidth space is U+3000 = 0xE3 0x80 0x80 in UTF-8
+            0x80 if pos >= 3 && line[pos - 3] == 0xE3 && line[pos - 2] == 0x80 => {
+                pos -= 3;
+            }
+            // Non-blank character found
+            _ => break,
+        }
+    }
+
+    if pos < len { Some(pos) } else { None }
 }
 
 #[cfg(test)]
