@@ -1,11 +1,12 @@
 /// LineIndex helps map byte offsets to line and column numbers.
 #[derive(Debug, Clone)]
-pub struct LineIndex {
+pub struct LineIndex<'rk> {
     line_starts: Vec<usize>,
+    lines: Vec<&'rk [u8]>,
 }
-impl LineIndex {
+impl<'rk> LineIndex<'rk> {
     /// Build a LineIndex from source bytes.
-    pub fn from_source(source: &[u8]) -> Self {
+    pub fn from_source(source: &'rk [u8]) -> Self {
         let mut line_starts = Vec::with_capacity(source.len() / 80); // Rough estimate
         line_starts.push(0);
         for (i, &byte) in source.iter().enumerate() {
@@ -13,26 +14,87 @@ impl LineIndex {
                 line_starts.push(i + 1);
             }
         }
-        Self { line_starts }
+
+        // Build lines cache
+        let mut lines = Vec::with_capacity(line_starts.len());
+        for i in 0..line_starts.len() {
+            let start = line_starts[i];
+            let end = if i + 1 < line_starts.len() {
+                line_starts[i + 1].saturating_sub(1)
+            } else {
+                source.len()
+            };
+            lines.push(&source[start..end]);
+        }
+
+        Self { line_starts, lines }
+    }
+    /// Get the line index (0-indexed) for a byte offset.
+    pub fn line_index(&self, offset: usize) -> usize {
+        match self.line_starts.binary_search(&offset) {
+            Ok(line) => line,
+            Err(line) => line.saturating_sub(1),
+        }
     }
     /// Get the line number (1-indexed) for a byte offset.
     pub fn line_number(&self, offset: usize) -> usize {
         match self.line_starts.binary_search(&offset) {
-            Ok(line) => line + 1,
+            Ok(line) => line.saturating_add(1),
             Err(line) => line,
         }
     }
     /// Get the column number (1-indexed) for a byte offset.
     pub fn column_number(&self, offset: usize) -> usize {
-        let line_index = self.line_number(offset) - 1;
+        let line_index = self.line_index(offset);
         let line_start = self.line_starts[line_index];
         offset - line_start + 1
     }
     /// Get both line and column (1-indexed) for a byte offset.
     pub fn line_column(&self, offset: usize) -> (usize, usize) {
-        let line_index = self.line_number(offset) - 1;
+        let line_index = self.line_index(offset);
         let line_start = self.line_starts[line_index];
         (line_index + 1, offset - line_start + 1)
+    }
+
+    /// Get the byte range for the line containing the given offset.
+    /// Returns (line_start, next_line_start) where next_line_start is None for the last line.
+    pub fn line_range(&self, offset: usize) -> (usize, Option<usize>) {
+        let line_index = self.line_index(offset);
+        let line_start = self.line_starts[line_index];
+        let next_line_start = self.line_starts.get(line_index + 1).copied();
+        (line_start, next_line_start)
+    }
+
+    /// Check if two byte offsets are on the same line.
+    /// Optimized to use single binary search.
+    pub fn in_same_line(&self, pos1: usize, pos2: usize) -> bool {
+        let (curr_line_start, next_line_start) = self.line_range(pos1);
+        curr_line_start <= pos2 && next_line_start.map_or(true, |next| pos2 < next)
+    }
+
+    /// Get the line content for a given line index (0-indexed).
+    pub fn line(&self, line_index: usize) -> Option<&'rk [u8]> {
+        self.lines.get(line_index).copied()
+    }
+
+    /// Get the line content for a given byte offset.
+    pub fn line_at(&self, offset: usize) -> &'rk [u8] {
+        let line_index = self.line_index(offset);
+        self.lines[line_index]
+    }
+
+    /// Check if the offset is at the beginning of its line (ignoring leading whitespace).
+    pub fn begins_its_line(&self, offset: usize) -> bool {
+        let line_index = self.line_index(offset);
+        let line_start = self.line_starts[line_index];
+        let prefix = &self.lines[line_index][..offset - line_start];
+        prefix.iter().all(|&b| b == b' ' || b == b'\t')
+    }
+
+    pub fn column_offset_between(&self, pos1: usize, pos2: usize) -> usize {
+        let col1 = self.column_number(pos1);
+        let col2 = self.column_number(pos2);
+        if col1 <= col2 { col2 - col1 } else { col1 - col2 }
     }
 
     /// Batch resolve sorted offsets to (line, column) pairs.
@@ -45,9 +107,7 @@ impl LineIndex {
 
         for &(start, end) in offsets {
             // Advance to the correct line for start offset
-            while current_line_idx + 1 < line_count
-                && self.line_starts[current_line_idx + 1] <= start
-            {
+            while current_line_idx + 1 < line_count && self.line_starts[current_line_idx + 1] <= start {
                 current_line_idx += 1;
             }
 
@@ -57,9 +117,7 @@ impl LineIndex {
 
             // Find line for end offset (usually same line or close)
             let mut end_line_idx = current_line_idx;
-            while end_line_idx + 1 < line_count
-                && self.line_starts[end_line_idx + 1] <= end
-            {
+            while end_line_idx + 1 < line_count && self.line_starts[end_line_idx + 1] <= end {
                 end_line_idx += 1;
             }
 
@@ -77,6 +135,24 @@ impl LineIndex {
     pub fn line_start(&self, line_index: usize) -> Option<usize> {
         self.line_starts.get(line_index).copied()
     }
+
+    /// Get the byte offset where the line starts for a given byte offset.
+    pub fn line_start_offset(&self, offset: usize) -> usize {
+        let line_index = self.line_index(offset);
+        self.line_starts[line_index]
+    }
+
+    /// Get the byte offset where the line ends (before newline) for a given byte offset.
+    pub fn line_end_offset(&self, offset: usize) -> usize {
+        let line_index = self.line_index(offset);
+        if line_index + 1 < self.line_starts.len() {
+            self.line_starts[line_index + 1].saturating_sub(1)
+        } else {
+            // Last line - return length of the line content
+            self.line_starts[line_index] + self.lines[line_index].len()
+        }
+    }
+
     /// Get the number of lines.
     pub fn line_count(&self) -> usize {
         self.line_starts.len()

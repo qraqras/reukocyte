@@ -83,6 +83,7 @@ pub fn check(checker: &mut Checker, node: &CallNode) {
 #[cfg(test)]
 mod tests {
     use crate::check;
+    use crate::rule::{LintRule, RuleId};
 
     #[test]
     fn test_no_debugger() {
@@ -135,7 +136,12 @@ mod tests {
     fn test_pry_rescue() {
         let source = b"Pry.rescue { foo }\n";
         let diagnostics = check(source);
-        assert_eq!(diagnostics.len(), 1);
-        assert!(diagnostics[0].message.contains("Pry.rescue"));
+        // Filter only Debugger diagnostics
+        let debugger_diagnostics: Vec<_> = diagnostics
+            .iter()
+            .filter(|d| d.rule_id == RuleId::Lint(LintRule::Debugger))
+            .collect();
+        assert_eq!(debugger_diagnostics.len(), 1);
+        assert!(debugger_diagnostics[0].message.contains("Pry.rescue"));
     }
 }

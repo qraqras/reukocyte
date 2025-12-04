@@ -1,5 +1,6 @@
 mod analyze;
 mod checker;
+mod config;
 mod conflict;
 mod corrector;
 mod diagnostic;
@@ -11,27 +12,30 @@ pub mod utils;
 pub mod rules;
 
 pub use checker::Checker;
+pub use config::{AlignWith, Config, LayoutConfig, LayoutEndAlignmentConfig, LayoutIndentationWidthConfig};
 pub use conflict::ConflictRegistry;
 pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
-pub use fix::{
-    InfiniteCorrectionLoop, apply_fixes, apply_fixes_with_loop_detection,
-    apply_fixes_with_remaining,
-};
+pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_with_loop_detection, apply_fixes_with_remaining};
 pub use locator::LineIndex;
 pub use rule::{Category, LayoutRule, LintRule, RuleId};
 
 use ruby_prism::Visit;
 
-/// Check a Ruby source file for violations.
+/// Check a Ruby source file for violations with default configuration.
 ///
 /// This is the main entry point that:
 /// 1. Parses the source once
 /// 2. Traverses the AST once for all node-based rules (Lint)
 /// 3. Runs line-based rules (Layout) - can use info from AST phase
 pub fn check(source: &[u8]) -> Vec<Diagnostic> {
+    check_with_config(source, &Config::default())
+}
+
+/// Check a Ruby source file for violations with custom configuration.
+pub fn check_with_config(source: &[u8], config: &Config) -> Vec<Diagnostic> {
     let parse_result = ruby_prism::parse(source);
-    let mut checker = Checker::new(source);
+    let mut checker = Checker::new(source, config);
 
     // Run AST-based rules (single traversal)
     checker.visit(&parse_result.node());

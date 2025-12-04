@@ -36,6 +36,6 @@ use ruby_prism::*;
 /// Run lint rules over a [`MatchWriteNode`] syntax node.
 /// Run lint rules over a [`MultiWriteNode`] syntax node.
 #[rustfmt::skip]
-pub(crate) fn assignment(node: &Node, rhs: &Node, checker: &mut Checker) {
+pub(crate) fn assignment(node: Node, rhs: Node, checker: &mut Checker) {
     indentation_width::check_assignment(node, rhs, checker);
 }

@@ -110,25 +110,23 @@ mod tests {
     fn test_no_tabs() {
         let source = b"def foo\n  bar\nend\n";
         let diagnostics = check(source);
-        assert!(
-            diagnostics.is_empty(),
-            "Expected no diagnostics for space indentation"
-        );
+        assert!(diagnostics.is_empty(), "Expected no diagnostics for space indentation");
     }
 
     #[test]
     fn test_single_tab_indent() {
         let source = b"def foo\n\tbar\nend\n";
         let diagnostics = check(source);
-        assert_eq!(diagnostics.len(), 1);
-        assert_eq!(
-            diagnostics[0].rule_id,
-            RuleId::Layout(LayoutRule::IndentationStyle)
-        );
-        assert_eq!(diagnostics[0].message, "Tab detected in indentation.");
+        // IndentationStyle detects tab, IndentationWidth detects wrong indentation
+        let style_diagnostics: Vec<_> = diagnostics
+            .iter()
+            .filter(|d| d.rule_id == RuleId::Layout(LayoutRule::IndentationStyle))
+            .collect();
+        assert_eq!(style_diagnostics.len(), 1);
+        assert_eq!(style_diagnostics[0].message, "Tab detected in indentation.");
         // Tab is at position 8 (after "def foo\n")
-        assert_eq!(diagnostics[0].start, 8);
-        assert_eq!(diagnostics[0].end, 9);
+        assert_eq!(style_diagnostics[0].start, 8);
+        assert_eq!(style_diagnostics[0].end, 9);
     }
 
     #[test]
@@ -199,17 +197,19 @@ mod tests {
             .iter()
             .filter(|d| d.rule_id == RuleId::Layout(LayoutRule::IndentationStyle))
             .collect();
-        assert!(
-            tab_violations.is_empty(),
-            "Tab after code should not be flagged"
-        );
+        assert!(tab_violations.is_empty(), "Tab after code should not be flagged");
     }
 
     #[test]
     fn test_multiple_lines_with_tabs() {
         let source = b"def foo\n\tbar\n\tbaz\nend\n";
         let diagnostics = check(source);
-        assert_eq!(diagnostics.len(), 2);
+        // Filter only IndentationStyle diagnostics
+        let style_diagnostics: Vec<_> = diagnostics
+            .iter()
+            .filter(|d| d.rule_id == RuleId::Layout(LayoutRule::IndentationStyle))
+            .collect();
+        assert_eq!(style_diagnostics.len(), 2);
     }
 
     #[test]
