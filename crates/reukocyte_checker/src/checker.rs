@@ -10,15 +10,14 @@ use std::collections::HashSet;
 /// The main checker that traverses the AST and runs rules.
 pub struct Checker<'rk> {
     source: &'rk [u8],
-    pub config: &'rk Config,
-    pub line_index: LineIndex<'rk>,
+    config: &'rk Config,
+    line_index: LineIndex<'rk>,
     raw_diagnostics: Vec<RawDiagnostic>,
     ignored_nodes: HashSet<(usize, usize)>,
     /// Stack of ancestor nodes (parent chain).
     /// Stores the actual Node values for full access to parent node data.
     ancestors: Vec<Node<'rk>>,
 }
-
 impl<'rk> Checker<'rk> {
     pub fn new(source: &'rk [u8], config: &'rk Config) -> Self {
         Self {
@@ -58,17 +57,47 @@ impl<'rk> Checker<'rk> {
     pub fn ancestor(&self, n: usize) -> Option<&Node<'rk>> {
         let len = self.ancestors.len();
         let idx = n + 1; // 0 = parent = last, 1 = grandparent = len-2, etc.
-        if idx <= len {
-            Some(&self.ancestors[len - idx])
-        } else {
-            None
-        }
+        if idx <= len { Some(&self.ancestors[len - idx]) } else { None }
     }
 
     /// Get all ancestors as a slice (from root to parent).
     #[inline]
     pub fn ancestors(&self) -> &[Node<'rk>] {
         &self.ancestors
+    }
+
+    /// Check if any ancestor matches the given predicate.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Check if we're inside a class definition
+    /// if checker.has_ancestor(|node| node.as_class_node().is_some()) {
+    ///     // ...
+    /// }
+    /// ```
+    #[inline]
+    pub fn has_ancestor<F>(&self, predicate: F) -> bool
+    where
+        F: Fn(&Node<'rk>) -> bool,
+    {
+        self.ancestors.iter().any(predicate)
+    }
+
+    /// Find the first ancestor that matches the given predicate (closest to current node).
+    ///
+    /// # Example
+    /// ```ignore
+    /// // Find the enclosing class node
+    /// if let Some(class_node) = checker.find_ancestor(|node| node.as_class_node().is_some()) {
+    ///     // ...
+    /// }
+    /// ```
+    #[inline]
+    pub fn find_ancestor<F>(&self, predicate: F) -> Option<&Node<'rk>>
+    where
+        F: Fn(&Node<'rk>) -> bool,
+    {
+        self.ancestors.iter().rev().find(|node| predicate(node))
     }
 
     /// Push a node onto the ancestor stack (called before visiting children).
@@ -92,8 +121,7 @@ impl<'rk> Checker<'rk> {
     /// This is equivalent to RuboCop's `ignore_node`.
     #[inline]
     pub fn ignore_node(&mut self, location: &Location) {
-        self.ignored_nodes
-            .insert((location.start_offset(), location.end_offset()));
+        self.ignored_nodes.insert((location.start_offset(), location.end_offset()));
     }
 
     /// Check if a node is exactly one of the ignored nodes.
@@ -114,15 +142,7 @@ impl<'rk> Checker<'rk> {
 
     /// Report a diagnostic (deferred line/column calculation).
     #[inline]
-    pub fn report(
-        &mut self,
-        rule_id: RuleId,
-        message: String,
-        severity: Severity,
-        start_offset: usize,
-        end_offset: usize,
-        fix: Option<Fix>,
-    ) {
+    pub fn report(&mut self, rule_id: RuleId, message: String, severity: Severity, start_offset: usize, end_offset: usize, fix: Option<Fix>) {
         self.raw_diagnostics.push(RawDiagnostic {
             rule_id,
             message,
@@ -153,9 +173,7 @@ impl<'rk> Checker<'rk> {
         self.raw_diagnostics
             .into_iter()
             .zip(resolved)
-            .map(|(raw, (line_start, line_end, column_start, column_end))| {
-                raw.resolve(line_start, line_end, column_start, column_end)
-            })
+            .map(|(raw, (line_start, line_end, column_start, column_end))| raw.resolve(line_start, line_end, column_start, column_end))
             .collect()
     }
 }
@@ -1035,9 +1053,12 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_statements_node(&mut self, node: &ruby_prism::StatementsNode) {
         analyze::statements_node(node, self);
-        // self.push_ancestor(node.as_node());
+        // Skip adding ProgramNode's StatementsNode to ancestors
+        // (ProgramNode is the root and not pushed to ancestors)
+        let should_track = self.parent().is_some();
+        should_track.then(|| self.push_ancestor(node.as_node()));
         ruby_prism::visit_statements_node(self, node);
-        // self.pop_ancestor();
+        should_track.then(|| self.pop_ancestor());
     }
     fn visit_string_node(&mut self, node: &ruby_prism::StringNode) {
         analyze::string_node(node, self);

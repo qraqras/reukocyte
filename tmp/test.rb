@@ -1,9 +1,6 @@
-private def my_method
-  puts "Hello"
+class Test
+  private
+    def foo; end
+     def bar; end
+def baz; end
 end
-
-foo = if true
-        bar
-    else
-      baz
-    end

@@ -2,3 +2,7 @@
 #   EnforcedStyleAlignWith: def
 # Layout/EndAlignment:
 #   EnforcedStyleAlignWith: variable
+
+
+# IndentationConsistency:
+#   EnforcedStyle: indented_internal_methods
