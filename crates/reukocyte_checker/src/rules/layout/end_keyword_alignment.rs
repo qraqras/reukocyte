@@ -1,14 +1,15 @@
-use crate::{checker::Checker, config::AlignWith};
+use crate::checker::Checker;
+use crate::config::layout::end_alignment::EnforcedStyleAlignWith;
 use ruby_prism::Location;
 
 pub fn should_variable_alignment(
     whole_expression: Location,
     rhs: Location,
-    end_alignment_style: AlignWith,
+    end_alignment_style: EnforcedStyleAlignWith,
     checker: &Checker,
 ) -> bool {
     match end_alignment_style {
-        AlignWith::Keyword => false,
+        EnforcedStyleAlignWith::Keyword => false,
         _ => !has_break_before_keyword(whole_expression, rhs, checker),
     }
 }

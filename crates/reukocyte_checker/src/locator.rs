@@ -67,7 +67,7 @@ impl<'rk> LineIndex<'rk> {
 
     /// Check if two byte offsets are on the same line.
     /// Optimized to use single binary search.
-    pub fn in_same_line(&self, pos1: usize, pos2: usize) -> bool {
+    pub fn are_on_same_line(&self, pos1: usize, pos2: usize) -> bool {
         let (curr_line_start, next_line_start) = self.line_range(pos1);
         curr_line_start <= pos2 && next_line_start.map_or(true, |next| pos2 < next)
     }
@@ -91,10 +91,11 @@ impl<'rk> LineIndex<'rk> {
         prefix.iter().all(|&b| b == b' ' || b == b'\t')
     }
 
-    pub fn column_offset_between(&self, pos1: usize, pos2: usize) -> usize {
-        let col1 = self.column_number(pos1);
-        let col2 = self.column_number(pos2);
-        if col1 <= col2 { col2 - col1 } else { col1 - col2 }
+    /// Calculate the column offset from pos1 to pos2 (can be negative if pos2 is to the left of pos1).
+    pub fn column_offset_between(&self, pos1: usize, pos2: usize) -> i32 {
+        let col1 = self.column_number(pos1) as i32;
+        let col2 = self.column_number(pos2) as i32;
+        col2 - col1
     }
 
     /// Batch resolve sorted offsets to (line, column) pairs.

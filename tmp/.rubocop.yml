@@ -1,0 +1,4 @@
+# Layout/DefEndAlignment:
+#   EnforcedStyleAlignWith: def
+# Layout/EndAlignment:
+#   EnforcedStyleAlignWith: variable
