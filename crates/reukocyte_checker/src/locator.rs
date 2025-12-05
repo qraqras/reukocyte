@@ -84,7 +84,7 @@ impl<'rk> LineIndex<'rk> {
     }
 
     /// Check if the offset is at the beginning of its line (ignoring leading whitespace).
-    pub fn begins_its_line(&self, offset: usize) -> bool {
+    pub fn is_first_on_line(&self, offset: usize) -> bool {
         let line_index = self.line_index(offset);
         let line_start = self.line_starts[line_index];
         let prefix = &self.lines[line_index][..offset - line_start];

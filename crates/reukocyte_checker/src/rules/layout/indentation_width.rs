@@ -1,5 +1,5 @@
 use crate::checker::Checker;
-use crate::config::EnforcedStyleAlignWith;
+use crate::config::{EnforcedStyle, EnforcedStyleAlignWith};
 use crate::diagnostic::{Edit, Fix, Severity};
 use crate::rule::{LayoutRule, RuleId};
 use crate::utils::first_part_of_call_chain;
@@ -8,120 +8,128 @@ use ruby_prism::*;
 /// Rule identifier for Layout/IndentationWidth.
 pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::IndentationWidth);
 
-/// Default indentation width (2 spaces).
-pub const DEFAULT_WIDTH: i32 = 2;
-
-/// Check if indented_internal_methods style is enabled.
-/// TODO: Read from config (Layout/IndentationConsistency)
-fn indented_internal_methods_style() -> bool {
-    false
+/// Handle StatementsNode for indentation width checking.
+pub fn on_statements(statements: &StatementsNode, checker: &mut Checker) {
+    if let Some(parent) = checker.parent() {
+        match parent {
+            Node::BeginNode { .. } => check_begin_node(&parent.as_begin_node().unwrap(), statements, checker),
+            Node::BlockNode { .. } => check_block_node(&parent.as_block_node().unwrap(), statements, checker),
+            Node::ClassNode { .. } => check_class_node(&parent.as_class_node().unwrap(), statements, checker),
+            Node::DefNode { .. } => check_def_node(&parent.as_def_node().unwrap(), statements, checker),
+            Node::ElseNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::EnsureNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::ForNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::IfNode { .. } => check_if_node(&parent.as_if_node().unwrap(), statements, checker),
+            Node::InNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::RescueNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::UntilNode { .. } => check_until_node(&parent.as_until_node().unwrap(), statements, checker),
+            Node::WhenNode { .. } => check_indentation(&parent.location(), statements, checker),
+            Node::WhileNode { .. } => check_while_node(&parent.as_while_node().unwrap(), statements, checker),
+            _ => {}
+        }
+    };
 }
 
-pub fn on_statements(statements: &StatementsNode, _base: bool, checker: &mut Checker) {
-    let line_index = checker.line_index();
-    let Some(parent) = checker.parent() else {
-        return; // Top-level statements have no parent
-    };
-    match parent {
-        Node::ElseNode { .. } => check_indentation(&parent.location(), statements, checker),
-        Node::RescueNode { .. } => check_indentation(&parent.location(), statements, checker),
-        Node::EnsureNode { .. } => check_indentation(&parent.location(), statements, checker),
-        Node::ForNode { .. } => check_indentation(&parent.location(), statements, checker),
-        Node::BeginNode { .. } => {
-            let begin_node = parent.as_begin_node().unwrap();
-            // Check if this is a standalone begin block (has begin keyword)
-            if let Some(begin_keyword_loc) = begin_node.begin_keyword_loc() {
-                // Use begin keyword as base for indentation
-                check_indentation(&begin_keyword_loc, statements, checker);
-            }
+/// Check BeginNode for indentation width violations.
+fn check_begin_node(begin_node: &BeginNode, statements: &StatementsNode, checker: &mut Checker) {
+    // Following RuboCop's approach, it generally aligns with the `end` keyword.
+    match (begin_node.begin_keyword_loc(), begin_node.end_keyword_loc()) {
+        (Some(_begin), Some(end)) => {
+            check_indentation(&end, statements, checker);
         }
-        Node::BlockNode { .. } => {
-            let closing_loc = parent.as_block_node().unwrap().closing_loc();
-            if !line_index.begins_its_line(closing_loc.start_offset()) {
-                check_indentation(&closing_loc, statements, checker);
-            }
-            if !indented_internal_methods_style() {
-                check_members(&closing_loc, statements, checker);
-            }
+        (Some(begin), None) => {
+            check_indentation(&begin, statements, checker);
         }
-        Node::ClassNode { .. } => {
-            let class_keyword_loc = parent.as_class_node().unwrap().class_keyword_loc();
-            if !line_index.in_same_line(class_keyword_loc.start_offset(), statements.location().start_offset()) {
-                return;
-            }
-            check_members(&class_keyword_loc, statements, checker);
+        (None, Some(end)) => {
+            check_indentation(&end, statements, checker);
         }
-        Node::CallNode { .. } => {
-            // if let Some(call_node) = parent.as_call_node() {
-            //     // Skip if method is an access modifier
-            //     if !call_node.receiver().is_none() {
-            //         return;
-            //     }
-            //     let def_end_config = &checker.config().layout.def_end_alignment;
-            //     let style = def_end_config.enforced_style_align_with;
-            //     let base = match style {
-            //         EnforcedStyleAlignWith::Def => parent.location(), // DefNode
-            //         _ => call_node.location(),                        // CallNode
-            //     };
-            //     check_indentation(&base, statements, checker);
-            //     checker.ignore_node(&parent.location());
-            //     return;
-            // }
-        }
-        Node::DefNode { .. } => {
-            if checker.is_ignored_node(parent.location().start_offset(), parent.location().end_offset()) {
-                return;
-            }
-            check_indentation(&parent.location(), statements, checker);
-        }
-        Node::WhileNode { .. } => {
-            let while_node = parent.as_while_node().unwrap();
-            let start = while_node.location().start_offset();
-            let end = while_node.location().end_offset();
-            let keyword_loc = while_node.keyword_loc();
-            let predicate_loc = while_node.predicate().location();
-            if checker.is_ignored_node(start, end) {
-                return;
-            }
-            if !line_index.in_same_line(keyword_loc.start_offset(), predicate_loc.end_offset()) {
-                return;
-            }
-            check_indentation(&while_node.location(), statements, checker);
-        }
-        Node::UntilNode { .. } => {
-            let until_node = parent.as_until_node().unwrap();
-            let start = until_node.location().start_offset();
-            let end = until_node.location().end_offset();
-            let keyword_loc = until_node.keyword_loc();
-            let predicate_loc = until_node.predicate().location();
-            if checker.is_ignored_node(start, end) {
-                return;
-            }
-            if !line_index.in_same_line(keyword_loc.start_offset(), predicate_loc.end_offset()) {
-                return;
-            }
-            check_indentation(&until_node.location(), statements, checker);
-        }
-        Node::CaseNode { .. } => {
-            let case_node = parent.as_case_node().unwrap();
-            let mut last_when = None;
-            for condition in case_node.conditions().iter() {
-                if let Some(when_node) = condition.as_when_node()
-                    && let Some(body) = when_node.statements()
-                {
-                    check_indentation(&when_node.location(), &body, checker);
-                    last_when = Some(when_node);
-                }
-            }
-            if let Some(last) = last_when
-                && let Some(else_clause) = case_node.else_clause()
-                && let Some(body) = else_clause.statements()
-            {
-                check_indentation(&last.location(), &body, checker);
-            }
-        }
-        _ => {}
+        (None, None) => {}
     }
+}
+
+// Check BlockNode for indentation width violations.
+fn check_block_node(block_node: &BlockNode, statements: &StatementsNode, checker: &mut Checker) {
+    let closing_loc = block_node.closing_loc();
+    // Skip single-line blocks like `foo.each { |x| bar }`
+    if !checker.line_index().is_first_on_line(closing_loc.start_offset()) {
+        return;
+    }
+    match checker.config().layout.indentation_consistency.enforced_style {
+        EnforcedStyle::Normal => check_indentation(&closing_loc, statements, checker),
+        EnforcedStyle::IndentedInternalMethods => check_members(&closing_loc, statements, checker),
+    }
+}
+
+/// Check DefNode for indentation width violations.
+/// If `def` is a method call argument (e.g., `private def x`), refer to Layout/DefEndAlignment config.
+fn check_def_node(def_node: &DefNode, statements: &StatementsNode, checker: &mut Checker) {
+    // Check if DefNode is a method call argument.
+    // AST structure: CallNode -> ArgumentsNode -> DefNode -> StatementsNode
+    let call_node = checker.ancestor(2).and_then(|ancestor| ancestor.as_call_node());
+    match call_node {
+        Some(call_node) => match checker.config().layout.def_end_alignment.enforced_style_align_with {
+            EnforcedStyleAlignWith::StartOfLine => {
+                check_indentation(&call_node.location(), statements, checker);
+            }
+            EnforcedStyleAlignWith::Def => {
+                check_indentation(&def_node.location(), statements, checker);
+            }
+        },
+        None => check_indentation(&def_node.location(), statements, checker),
+    }
+}
+fn check_if_node(if_node: &IfNode, statements: &StatementsNode, checker: &mut Checker) {
+    // `true ? puts "true" : puts "false"`
+    if if_node.if_keyword_loc().is_none() {
+        return;
+    }
+    // `puts "true" if true`
+    if if_node.end_keyword_loc().is_none() {
+        return;
+    }
+    check_indentation(&if_node.location(), statements, checker);
+}
+fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker: &mut Checker) {
+    let class_keyword_loc = class_node.class_keyword_loc();
+    if !checker
+        .line_index()
+        .in_same_line(class_keyword_loc.start_offset(), statements.location().start_offset())
+    {
+        return;
+    }
+    check_members(&class_keyword_loc, statements, checker);
+}
+fn check_until_node(until_node: &UntilNode, statements: &StatementsNode, checker: &mut Checker) {
+    let start = until_node.location().start_offset();
+    let end = until_node.location().end_offset();
+    let keyword_loc = until_node.keyword_loc();
+    let predicate_loc = until_node.predicate().location();
+    if checker.is_ignored_node(start, end) {
+        return;
+    }
+    if !checker
+        .line_index()
+        .in_same_line(keyword_loc.start_offset(), predicate_loc.end_offset())
+    {
+        return;
+    }
+    check_indentation(&until_node.location(), statements, checker);
+}
+fn check_while_node(while_node: &WhileNode, statements: &StatementsNode, checker: &mut Checker) {
+    let start = while_node.location().start_offset();
+    let end = while_node.location().end_offset();
+    let keyword_loc = while_node.keyword_loc();
+    let predicate_loc = while_node.predicate().location();
+    if checker.is_ignored_node(start, end) {
+        return;
+    }
+    if !checker
+        .line_index()
+        .in_same_line(keyword_loc.start_offset(), predicate_loc.end_offset())
+    {
+        return;
+    }
+    check_indentation(&while_node.location(), statements, checker);
 }
 
 /// ****************************************************************
@@ -148,22 +156,15 @@ pub fn check_assignment(_node: Node, rhs: Node, checker: &mut Checker) {
 /// Check indentation of body relative to base.
 /// RuboCop equivalent: check_indentation(base_loc, body_node, style = 'normal')
 pub fn check_indentation(base_loc: &Location, body_node: &StatementsNode, checker: &mut Checker) {
-    check_indentation_style(base_loc, body_node, "normal", checker);
-}
-
-/// Check indentation with a specific style name for error messages.
-pub fn check_indentation_style(base_loc: &Location, body_node: &StatementsNode, style: &str, checker: &mut Checker) {
     if !indentation_to_check(base_loc, body_node, checker) {
         return;
     }
 
-    let body_loc = body_node.location();
     let indentation = checker
         .line_index()
-        .column_offset_between(base_loc.start_offset(), body_loc.start_offset());
-    let configured_width = checker.config.layout.indentation_width.width as usize;
-    let column_delta = configured_width as i32 - indentation as i32;
-
+        .column_offset_between(base_loc.start_offset(), body_node.location().start_offset());
+    let configured_width = checker.config.layout.indentation_width.width;
+    let column_delta = configured_width - indentation as i32;
     if column_delta == 0 {
         return;
     }
@@ -173,9 +174,10 @@ pub fn check_indentation_style(base_loc: &Location, body_node: &StatementsNode, 
     let report_node_loc = if let Some(first) = first_body {
         first.location()
     } else {
-        body_loc
+        body_node.location()
     };
 
+    let style = "normal";
     let style_name = if style == "normal" {
         String::new()
     } else {
@@ -243,7 +245,7 @@ fn skip_check(base_loc: &Location, body_node: &StatementsNode, checker: &Checker
     // (e.g., lines like "else do_something")
     if let Some(first) = body_node.body().iter().next() {
         let first_loc = first.location();
-        if !line_index.begins_its_line(first_loc.start_offset()) {
+        if !line_index.is_first_on_line(first_loc.start_offset()) {
             return true;
         }
     }
@@ -265,6 +267,12 @@ fn starts_with_access_modifier(statements: &StatementsNode) -> bool {
             }
         }
     }
+    false
+}
+
+/// Check if indented_internal_methods style is enabled.
+/// TODO: Read from config (Layout/IndentationConsistency)
+fn indented_internal_methods_style() -> bool {
     false
 }
 

@@ -921,9 +921,9 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_program_node(&mut self, node: &ruby_prism::ProgramNode) {
         analyze::program_node(node, self);
-        self.push_ancestor(node.as_node());
+        // self.push_ancestor(node.as_node());
         ruby_prism::visit_program_node(self, node);
-        self.pop_ancestor();
+        // self.pop_ancestor();
     }
     fn visit_range_node(&mut self, node: &ruby_prism::RangeNode) {
         analyze::range_node(node, self);
@@ -1035,9 +1035,9 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_statements_node(&mut self, node: &ruby_prism::StatementsNode) {
         analyze::statements_node(node, self);
-        self.push_ancestor(node.as_node());
+        // self.push_ancestor(node.as_node());
         ruby_prism::visit_statements_node(self, node);
-        self.pop_ancestor();
+        // self.pop_ancestor();
     }
     fn visit_string_node(&mut self, node: &ruby_prism::StringNode) {
         analyze::string_node(node, self);
