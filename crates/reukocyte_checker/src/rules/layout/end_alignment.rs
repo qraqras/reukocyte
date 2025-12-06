@@ -1,13 +1,45 @@
+//! Layout/EndAlignment rule.
+//!
+//! Checks whether the `end` keyword is aligned properly.
+
+#![allow(dead_code, unused_variables)]
+
 use crate::checker::Checker;
 use crate::config::layout::end_alignment::EnforcedStyleAlignWith;
+use crate::rule::{CheckStatementsNode, LayoutRule, Rule, RuleId};
 use crate::utility::call_node::*;
-use crate::utility::node::*;
 use ruby_prism::*;
 
+// ============================================================================
+// EndAlignment Rule Definition
+// ============================================================================
+
+/// Layout/EndAlignment rule.
+///
+/// This rule checks whether the `end` keyword is aligned with the
+/// corresponding keyword (`class`, `module`, `if`, etc.) or with the
+/// start of the line.
+pub struct EndAlignment;
+
+impl Rule for EndAlignment {
+    const ID: RuleId = RuleId::Layout(LayoutRule::EndAlignment);
+}
+
+impl CheckStatementsNode for EndAlignment {
+    fn check(node: &StatementsNode, checker: &mut Checker) {
+        check_statements(node, checker);
+    }
+}
+
+// ============================================================================
+// Implementation
+// ============================================================================
+
+// Target nodes:
 // ClassNode
 // ModuleNode
 // IfNode
-// ElseNode(親がIfNode)
+// ElseNode (parent is IfNode)
 // UnlessNode
 // WhileNode
 // UntilNode
@@ -15,7 +47,7 @@ use ruby_prism::*;
 // CaseMatchNode
 // Assignments
 
-pub fn on_statements(statements: &StatementsNode, checker: &mut Checker) {
+fn check_statements(statements: &StatementsNode, checker: &mut Checker) {
     let line_index = checker.line_index();
     if let Some(parent) = checker.parent() {
         match parent {

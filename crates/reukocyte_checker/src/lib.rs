@@ -19,7 +19,10 @@ pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
 pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_with_loop_detection, apply_fixes_with_remaining};
 pub use locator::LineIndex;
-pub use rule::{Category, LayoutRule, LintRule, RuleId};
+pub use rule::{
+    Category, CheckBlockNode, CheckCallNode, CheckCaseNode, CheckClassNode, CheckDefNode, CheckIfNode, CheckModuleNode, CheckStatementsNode, CheckUnlessNode,
+    CheckUntilNode, CheckWhileNode, LayoutRule, LintRule, Rule, RuleId,
+};
 
 use ruby_prism::Visit;
 

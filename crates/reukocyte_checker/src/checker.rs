@@ -176,6 +176,17 @@ impl<'rk> Checker<'rk> {
             .map(|(raw, (line_start, line_end, column_start, column_end))| raw.resolve(line_start, line_end, column_start, column_end))
             .collect()
     }
+
+    // ========== Rule enablement ==========
+
+    /// Check if a rule is enabled.
+    ///
+    /// TODO: Implement rule enable/disable logic based on config.
+    /// For now, all rules are enabled.
+    #[inline]
+    pub fn is_enabled(&self, _rule_id: RuleId) -> bool {
+        true
+    }
 }
 
 impl Visit<'_> for Checker<'_> {
