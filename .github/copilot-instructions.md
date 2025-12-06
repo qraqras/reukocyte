@@ -7,6 +7,7 @@
 
 ## 直近のタスク
 このプロジェクトの直近のタスクは以下の通りです:
+- EndAlignmentの実装を見直し
 - Layoutの実装
   - [ ] Layout/AccessModifierIndentation
   - [ ] Layout/ArgumentAlignment
@@ -56,7 +57,7 @@
   - [ ] Layout/HeredocIndentation
   - [ ] Layout/IndentationConsistency
   - [ ] Layout/IndentationStyle
-  - [ ] Layout/IndentationWidth
+  - [ x ] Layout/IndentationWidth
   - [ ] Layout/InitialIndentation
   - [ ] Layout/LeadingCommentSpace
   - [ ] Layout/LeadingEmptyLines

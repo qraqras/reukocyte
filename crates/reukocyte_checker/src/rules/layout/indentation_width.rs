@@ -6,7 +6,7 @@ use crate::config::layout::indentation_consistency::EnforcedStyle;
 use crate::diagnostic::{Edit, Fix, Severity};
 use crate::rule::{LayoutRule, RuleId};
 use crate::utility::access_modifier::*;
-use crate::utils::first_part_of_call_chain;
+use crate::utility::call_node::first_part_of_call_chain;
 use ruby_prism::*;
 
 /// Rule identifier for Layout/IndentationWidth.
