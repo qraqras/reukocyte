@@ -5,7 +5,7 @@ use crate::config::layout::end_alignment::EnforcedStyleAlignWith as EndAlignWith
 use crate::config::layout::indentation_consistency::EnforcedStyle;
 use crate::diagnostic::{Edit, Fix, Severity};
 use crate::rule::{LayoutRule, RuleId};
-use crate::utility::node_util::*;
+use crate::utility::access_modifier::*;
 use crate::utils::first_part_of_call_chain;
 use ruby_prism::*;
 
@@ -25,7 +25,9 @@ pub fn on_statements(statements: &StatementsNode, checker: &mut Checker) {
             Node::ForNode { .. } => check_statements(&parent.location(), statements, checker),
             Node::IfNode { .. } => check_if_node(&parent.as_if_node().unwrap(), statements, checker, None),
             Node::InNode { .. } => check_statements(&parent.location(), statements, checker),
+            Node::ModuleNode { .. } => check_module_node(&parent.as_module_node().unwrap(), statements, checker),
             Node::RescueNode { .. } => check_statements(&parent.location(), statements, checker),
+            Node::SingletonClassNode { .. } => check_singleton_class_node(&parent.as_singleton_class_node().unwrap(), statements, checker),
             Node::UnlessNode { .. } => check_unless_node(&parent.as_unless_node().unwrap(), statements, checker, None),
             Node::UntilNode { .. } => check_until_node(&parent.as_until_node().unwrap(), statements, checker, None),
             Node::WhenNode { .. } => check_statements(&parent.location(), statements, checker),
@@ -56,6 +58,14 @@ fn check_block_node(block_node: &BlockNode, statements: &StatementsNode, checker
     match checker.config().layout.indentation_consistency.enforced_style {
         EnforcedStyle::Normal => check_statements(&closing_loc, statements, checker),
         EnforcedStyle::IndentedInternalMethods => check_members(&closing_loc, statements, checker),
+    }
+}
+
+/// Check ClassNode for indentation width violations.
+fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker: &mut Checker) {
+    // Skip single-line class: `class Foo; def bar; end; end`
+    if checker.line_index().is_first_on_line(statements.location().start_offset()) {
+        check_members(&class_node.location(), statements, checker);
     }
 }
 
@@ -94,26 +104,19 @@ fn check_if_node(if_node: &IfNode, statements: &StatementsNode, checker: &mut Ch
     }
 }
 
-/// Check ClassNode for indentation width violations.
-fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker: &mut Checker) {
+/// Check ModuleNode for indentation width violations.
+fn check_module_node(module_node: &ModuleNode, statements: &StatementsNode, checker: &mut Checker) {
     // Skip single-line class: `class Foo; def bar; end; end`
     if checker.line_index().is_first_on_line(statements.location().start_offset()) {
-        check_members(&class_node.location(), statements, checker);
+        check_members(&module_node.location(), statements, checker);
     }
 }
 
-/// Check UntilNode for indentation width violations.
-fn check_until_node(until_node: &UntilNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
-    // Skip assignment until: `variable = until condition ... end`
-    if checker.is_ignored_node(until_node.location().start_offset(), until_node.location().end_offset()) {
-        return;
-    }
-    // Skip if condition is on its own line (line break before condition)
-    if checker.line_index().is_first_on_line(until_node.predicate().location().start_offset()) {
-        match base {
-            Some(base) => check_statements(base, statements, checker),
-            None => check_statements(&until_node.location(), statements, checker),
-        }
+/// Check SingletonClassNode for indentation width violations.
+fn check_singleton_class_node(singleton_class_node: &SingletonClassNode, statements: &StatementsNode, checker: &mut Checker) {
+    // Skip single-line class: `class << self; def bar; end; end`
+    if checker.line_index().is_first_on_line(statements.location().start_offset()) {
+        check_members(&singleton_class_node.location(), statements, checker);
     }
 }
 
@@ -130,6 +133,21 @@ fn check_unless_node(unless_node: &UnlessNode, statements: &StatementsNode, chec
     match base {
         Some(base) => check_statements(base, statements, checker),
         None => check_statements(&unless_node.location(), statements, checker),
+    }
+}
+
+/// Check UntilNode for indentation width violations.
+fn check_until_node(until_node: &UntilNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
+    // Skip assignment until: `variable = until condition ... end`
+    if checker.is_ignored_node(until_node.location().start_offset(), until_node.location().end_offset()) {
+        return;
+    }
+    // Skip if condition is on its own line (line break before condition)
+    if checker.line_index().is_first_on_line(until_node.predicate().location().start_offset()) {
+        match base {
+            Some(base) => check_statements(base, statements, checker),
+            None => check_statements(&until_node.location(), statements, checker),
+        }
     }
 }
 
