@@ -3,6 +3,7 @@ use crate::diagnostic::RawDiagnostic;
 use crate::locator::LineIndex;
 use crate::rule::RuleId;
 use crate::run_rules;
+use crate::utility::assignment::AssignmentNode;
 use crate::{Diagnostic, Fix, Severity};
 use ruby_prism::{Location, Node, Visit};
 use std::collections::HashSet;
@@ -300,7 +301,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_call_and_write_node(&mut self, node: &ruby_prism::CallAndWriteNode) {
         run_rules!(node, self, CallAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_and_write_node(self, node);
         self.pop_ancestor();
@@ -313,14 +314,14 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_call_operator_write_node(&mut self, node: &ruby_prism::CallOperatorWriteNode) {
         run_rules!(node, self, CallOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_or_write_node(&mut self, node: &ruby_prism::CallOrWriteNode) {
         run_rules!(node, self, CallOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_or_write_node(self, node);
         self.pop_ancestor();
@@ -357,21 +358,21 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_class_variable_and_write_node(&mut self, node: &ruby_prism::ClassVariableAndWriteNode) {
         run_rules!(node, self, ClassVariableAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_operator_write_node(&mut self, node: &ruby_prism::ClassVariableOperatorWriteNode) {
         run_rules!(node, self, ClassVariableOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_or_write_node(&mut self, node: &ruby_prism::ClassVariableOrWriteNode) {
         run_rules!(node, self, ClassVariableOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_or_write_node(self, node);
         self.pop_ancestor();
@@ -390,35 +391,35 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_class_variable_write_node(&mut self, node: &ruby_prism::ClassVariableWriteNode) {
         run_rules!(node, self, ClassVariableWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_and_write_node(&mut self, node: &ruby_prism::ConstantAndWriteNode) {
         run_rules!(node, self, ConstantAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_operator_write_node(&mut self, node: &ruby_prism::ConstantOperatorWriteNode) {
         run_rules!(node, self, ConstantOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_or_write_node(&mut self, node: &ruby_prism::ConstantOrWriteNode) {
         run_rules!(node, self, ConstantOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_and_write_node(&mut self, node: &ruby_prism::ConstantPathAndWriteNode) {
         run_rules!(node, self, ConstantPathAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_and_write_node(self, node);
         self.pop_ancestor();
@@ -431,14 +432,14 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_constant_path_operator_write_node(&mut self, node: &ruby_prism::ConstantPathOperatorWriteNode) {
         run_rules!(node, self, ConstantPathOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_or_write_node(&mut self, node: &ruby_prism::ConstantPathOrWriteNode) {
         run_rules!(node, self, ConstantPathOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_or_write_node(self, node);
         self.pop_ancestor();
@@ -451,7 +452,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_constant_path_write_node(&mut self, node: &ruby_prism::ConstantPathWriteNode) {
         run_rules!(node, self, ConstantPathWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_write_node(self, node);
         self.pop_ancestor();
@@ -470,7 +471,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_constant_write_node(&mut self, node: &ruby_prism::ConstantWriteNode) {
         run_rules!(node, self, ConstantWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_write_node(self, node);
         self.pop_ancestor();
@@ -561,21 +562,21 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_global_variable_and_write_node(&mut self, node: &ruby_prism::GlobalVariableAndWriteNode) {
         run_rules!(node, self, GlobalVariableAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_operator_write_node(&mut self, node: &ruby_prism::GlobalVariableOperatorWriteNode) {
         run_rules!(node, self, GlobalVariableOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_or_write_node(&mut self, node: &ruby_prism::GlobalVariableOrWriteNode) {
         run_rules!(node, self, GlobalVariableOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_or_write_node(self, node);
         self.pop_ancestor();
@@ -594,7 +595,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_global_variable_write_node(&mut self, node: &ruby_prism::GlobalVariableWriteNode) {
         run_rules!(node, self, GlobalVariableWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_write_node(self, node);
         self.pop_ancestor();
@@ -643,21 +644,21 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_index_and_write_node(&mut self, node: &ruby_prism::IndexAndWriteNode) {
         run_rules!(node, self, IndexAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_operator_write_node(&mut self, node: &ruby_prism::IndexOperatorWriteNode) {
         run_rules!(node, self, IndexOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_or_write_node(&mut self, node: &ruby_prism::IndexOrWriteNode) {
         run_rules!(node, self, IndexOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_or_write_node(self, node);
         self.pop_ancestor();
@@ -670,21 +671,21 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_instance_variable_and_write_node(&mut self, node: &ruby_prism::InstanceVariableAndWriteNode) {
         run_rules!(node, self, InstanceVariableAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_operator_write_node(&mut self, node: &ruby_prism::InstanceVariableOperatorWriteNode) {
         run_rules!(node, self, InstanceVariableOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_or_write_node(&mut self, node: &ruby_prism::InstanceVariableOrWriteNode) {
         run_rules!(node, self, InstanceVariableOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_or_write_node(self, node);
         self.pop_ancestor();
@@ -703,7 +704,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_instance_variable_write_node(&mut self, node: &ruby_prism::InstanceVariableWriteNode) {
         run_rules!(node, self, InstanceVariableWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_write_node(self, node);
         self.pop_ancestor();
@@ -776,21 +777,21 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_local_variable_and_write_node(&mut self, node: &ruby_prism::LocalVariableAndWriteNode) {
         run_rules!(node, self, LocalVariableAndWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_operator_write_node(&mut self, node: &ruby_prism::LocalVariableOperatorWriteNode) {
         run_rules!(node, self, LocalVariableOperatorWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_or_write_node(&mut self, node: &ruby_prism::LocalVariableOrWriteNode) {
         run_rules!(node, self, LocalVariableOrWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_or_write_node(self, node);
         self.pop_ancestor();
@@ -809,7 +810,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_local_variable_write_node(&mut self, node: &ruby_prism::LocalVariableWriteNode) {
         run_rules!(node, self, LocalVariableWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_write_node(self, node);
         self.pop_ancestor();
@@ -834,7 +835,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_match_write_node(&mut self, node: &ruby_prism::MatchWriteNode) {
         run_rules!(node, self, MatchWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.call().as_node(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_match_write_node(self, node);
         self.pop_ancestor();
@@ -859,7 +860,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_multi_write_node(&mut self, node: &ruby_prism::MultiWriteNode) {
         run_rules!(node, self, MultiWriteNode<'_>, []);
-        analyze::assignment(node.as_node(), node.value(), self);
+        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_multi_write_node(self, node);
         self.pop_ancestor();
