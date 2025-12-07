@@ -6,8 +6,9 @@
 
 use crate::checker::Checker;
 use crate::config::layout::end_alignment::EnforcedStyleAlignWith;
-use crate::rule::{CheckStatementsNode, LayoutRule, Rule, RuleId};
+use crate::rule::{Check, LayoutRule, Rule, RuleId};
 use crate::utility::call_node::*;
+use ruby_prism::StatementsNode;
 use ruby_prism::*;
 
 // ============================================================================
@@ -25,7 +26,7 @@ impl Rule for EndAlignment {
     const ID: RuleId = RuleId::Layout(LayoutRule::EndAlignment);
 }
 
-impl CheckStatementsNode for EndAlignment {
+impl Check<StatementsNode<'_>> for EndAlignment {
     fn check(node: &StatementsNode, checker: &mut Checker) {
         check_statements(node, checker);
     }

@@ -4,40 +4,42 @@ use crate::config::layout::def_end_alignment::EnforcedStyleAlignWith as DefAlign
 use crate::config::layout::end_alignment::EnforcedStyleAlignWith as EndAlignWith;
 use crate::config::layout::indentation_consistency::EnforcedStyle;
 use crate::diagnostic::{Edit, Fix, Severity};
-use crate::rule::{LayoutRule, RuleId};
+use crate::rule::*;
 use crate::utility::access_modifier::*;
 use crate::utility::call_node::first_part_of_call_chain;
 use ruby_prism::*;
 
-/// Rule identifier for Layout/IndentationWidth.
-pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::IndentationWidth);
-
-/// Handle StatementsNode for indentation width checking.
-pub fn on_statements(statements: &StatementsNode, checker: &mut Checker) {
-    if let Some(parent) = checker.parent() {
-        match parent {
-            Node::BeginNode { .. } => check_begin_node(&parent.as_begin_node().unwrap(), statements, checker),
-            Node::BlockNode { .. } => check_block_node(&parent.as_block_node().unwrap(), statements, checker),
-            Node::ClassNode { .. } => check_class_node(&parent.as_class_node().unwrap(), statements, checker),
-            Node::DefNode { .. } => check_def_node(&parent.as_def_node().unwrap(), statements, checker),
-            Node::ElseNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::EnsureNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::ForNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::IfNode { .. } => check_if_node(&parent.as_if_node().unwrap(), statements, checker, None),
-            Node::InNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::ModuleNode { .. } => check_module_node(&parent.as_module_node().unwrap(), statements, checker),
-            Node::RescueNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::SingletonClassNode { .. } => check_singleton_class_node(&parent.as_singleton_class_node().unwrap(), statements, checker),
-            Node::UnlessNode { .. } => check_unless_node(&parent.as_unless_node().unwrap(), statements, checker, None),
-            Node::UntilNode { .. } => check_until_node(&parent.as_until_node().unwrap(), statements, checker, None),
-            Node::WhenNode { .. } => check_statements(&parent.location(), statements, checker),
-            Node::WhileNode { .. } => check_while_node(&parent.as_while_node().unwrap(), statements, checker, None),
-            _ => {}
-        }
-    };
+pub struct IndentationWidth;
+impl Rule for IndentationWidth {
+    const ID: RuleId = RuleId::Layout(LayoutRule::IndentationWidth);
+}
+impl Check<StatementsNode<'_>> for IndentationWidth {
+    fn check(node: &StatementsNode, checker: &mut Checker) {
+        if let Some(parent) = checker.parent() {
+            match parent {
+                Node::BeginNode { .. } => check_begin_node(&parent.as_begin_node().unwrap(), node, checker),
+                Node::BlockNode { .. } => check_block_node(&parent.as_block_node().unwrap(), node, checker),
+                Node::ClassNode { .. } => check_class_node(&parent.as_class_node().unwrap(), node, checker),
+                Node::DefNode { .. } => check_def_node(&parent.as_def_node().unwrap(), node, checker),
+                Node::ElseNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::EnsureNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::ForNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::IfNode { .. } => check_if_node(&parent.as_if_node().unwrap(), node, checker, None),
+                Node::InNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::ModuleNode { .. } => check_module_node(&parent.as_module_node().unwrap(), node, checker),
+                Node::RescueNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::SingletonClassNode { .. } => check_singleton_class_node(&parent.as_singleton_class_node().unwrap(), node, checker),
+                Node::UnlessNode { .. } => check_unless_node(&parent.as_unless_node().unwrap(), node, checker, None),
+                Node::UntilNode { .. } => check_until_node(&parent.as_until_node().unwrap(), node, checker, None),
+                Node::WhenNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::WhileNode { .. } => check_while_node(&parent.as_while_node().unwrap(), node, checker, None),
+                _ => {}
+            }
+        };
+    }
 }
 
-/// Check BeginNode for indentation width violations.
+/// Check [`BeginNode`]` for indentation width violations.
 fn check_begin_node(begin_node: &BeginNode, statements: &StatementsNode, checker: &mut Checker) {
     // Following RuboCop's approach, it generally aligns with the `end` keyword.
     match (begin_node.begin_keyword_loc(), begin_node.end_keyword_loc()) {
@@ -48,7 +50,7 @@ fn check_begin_node(begin_node: &BeginNode, statements: &StatementsNode, checker
     }
 }
 
-// Check BlockNode for indentation width violations.
+/// Check [`BlockNode`] for indentation width violations.
 fn check_block_node(block_node: &BlockNode, statements: &StatementsNode, checker: &mut Checker) {
     let closing_loc = block_node.closing_loc();
     // Skip single-line blocks like `foo.each { |x| bar }`
@@ -61,7 +63,7 @@ fn check_block_node(block_node: &BlockNode, statements: &StatementsNode, checker
     }
 }
 
-/// Check ClassNode for indentation width violations.
+/// Check [`ClassNode`] for indentation width violations.
 fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker: &mut Checker) {
     // Skip single-line class: `class Foo; def bar; end; end`
     if checker.line_index().is_first_on_line(statements.location().start_offset()) {
@@ -69,7 +71,7 @@ fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker
     }
 }
 
-/// Check DefNode for indentation width violations.
+/// Check [`DefNode`] for indentation width violations.
 /// If `def` is a method call argument (e.g., `private def x`), refer to Layout/DefEndAlignment config.
 fn check_def_node(def_node: &DefNode, statements: &StatementsNode, checker: &mut Checker) {
     // Check if DefNode is a method call argument.
@@ -84,7 +86,7 @@ fn check_def_node(def_node: &DefNode, statements: &StatementsNode, checker: &mut
     }
 }
 
-/// Check IfNode for indentation width violations.
+/// Check [`IfNode`] for indentation width violations.
 fn check_if_node(if_node: &IfNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
     // Skip assignment if: `variable = if condition ... end`
     if checker.is_ignored_node(if_node.location().start_offset(), if_node.location().end_offset()) {
@@ -104,7 +106,7 @@ fn check_if_node(if_node: &IfNode, statements: &StatementsNode, checker: &mut Ch
     }
 }
 
-/// Check ModuleNode for indentation width violations.
+/// Check [`ModuleNode`] for indentation width violations.
 fn check_module_node(module_node: &ModuleNode, statements: &StatementsNode, checker: &mut Checker) {
     // Skip single-line class: `class Foo; def bar; end; end`
     if checker.line_index().is_first_on_line(statements.location().start_offset()) {
@@ -112,7 +114,7 @@ fn check_module_node(module_node: &ModuleNode, statements: &StatementsNode, chec
     }
 }
 
-/// Check SingletonClassNode for indentation width violations.
+/// Check [`SingletonClassNode`] for indentation width violations.
 fn check_singleton_class_node(singleton_class_node: &SingletonClassNode, statements: &StatementsNode, checker: &mut Checker) {
     // Skip single-line class: `class << self; def bar; end; end`
     if checker.line_index().is_first_on_line(statements.location().start_offset()) {
@@ -120,7 +122,7 @@ fn check_singleton_class_node(singleton_class_node: &SingletonClassNode, stateme
     }
 }
 
-/// Check UnlessNode for indentation width violations.
+/// Check [`UnlessNode`] for indentation width violations.
 fn check_unless_node(unless_node: &UnlessNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
     // Skip assignment if: `variable = if condition ... end`
     if checker.is_ignored_node(unless_node.location().start_offset(), unless_node.location().end_offset()) {
@@ -136,7 +138,7 @@ fn check_unless_node(unless_node: &UnlessNode, statements: &StatementsNode, chec
     }
 }
 
-/// Check UntilNode for indentation width violations.
+/// Check [`UntilNode`] for indentation width violations.
 fn check_until_node(until_node: &UntilNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
     // Skip assignment until: `variable = until condition ... end`
     if checker.is_ignored_node(until_node.location().start_offset(), until_node.location().end_offset()) {
@@ -151,7 +153,7 @@ fn check_until_node(until_node: &UntilNode, statements: &StatementsNode, checker
     }
 }
 
-/// Check WhileNode for indentation width violations.
+/// Check [`WhileNode`] for indentation width violations.
 fn check_while_node(while_node: &WhileNode, statements: &StatementsNode, checker: &mut Checker, base: Option<&Location>) {
     // Skip assignment while: `variable = while condition ... end`
     if checker.is_ignored_node(while_node.location().start_offset(), while_node.location().end_offset()) {
@@ -242,7 +244,7 @@ fn check_indentation(base_loc: &Location, node: &Node, checker: &mut Checker, st
 
     // Report diagnostic.
     checker.report(
-        RULE_ID,
+        IndentationWidth::ID,
         format!(
             "Use {} (not {}) spaces for {} indentation.",
             configured_indentation_width,
@@ -333,7 +335,9 @@ fn starts_with_access_modifier(statements: &StatementsNode, checker: &Checker) -
 
 #[cfg(test)]
 mod tests {
+    use super::IndentationWidth;
     use crate::check;
+    use crate::rule::Rule;
 
     fn check_source(source: &str) -> Vec<crate::Diagnostic> {
         check(source.as_bytes())
@@ -347,7 +351,7 @@ def foo
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert!(indentation_errors.is_empty(), "Expected no indentation errors, got: {:?}", indentation_errors);
     }
 
@@ -359,7 +363,7 @@ def foo
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert_eq!(indentation_errors.len(), 1, "Expected 1 indentation error, got: {:?}", indentation_errors);
         assert!(indentation_errors[0].message.contains("Use 2 (not 4)"));
     }
@@ -372,7 +376,7 @@ def foo
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert_eq!(indentation_errors.len(), 1, "Expected 1 indentation error, got: {:?}", indentation_errors);
         assert!(indentation_errors[0].message.contains("Use 2 (not 1)"));
     }
@@ -385,7 +389,7 @@ bar
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert_eq!(indentation_errors.len(), 1, "Expected 1 indentation error, got: {:?}", indentation_errors);
         assert!(indentation_errors[0].message.contains("Use 2 (not 0)"));
     }
@@ -400,7 +404,7 @@ class Foo
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert!(indentation_errors.is_empty(), "Expected no indentation errors, got: {:?}", indentation_errors);
     }
 
@@ -412,7 +416,7 @@ if condition
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert!(indentation_errors.is_empty(), "Expected no indentation errors, got: {:?}", indentation_errors);
     }
 
@@ -424,7 +428,7 @@ while condition
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert!(indentation_errors.is_empty(), "Expected no indentation errors, got: {:?}", indentation_errors);
     }
 
@@ -438,7 +442,7 @@ else bar
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         // Should not report error for "else bar" since it's on the same line
         assert!(
             indentation_errors.is_empty(),
@@ -454,7 +458,7 @@ def foo
 end
 "#;
         let diagnostics = check_source(source);
-        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == super::RULE_ID).collect();
+        let indentation_errors: Vec<_> = diagnostics.iter().filter(|d| d.rule_id == IndentationWidth::ID).collect();
         assert!(
             indentation_errors.is_empty(),
             "Expected no indentation errors for empty body, got: {:?}",

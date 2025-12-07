@@ -44,6 +44,13 @@ pub fn is_special_modifier(node: &Node, checker: &Checker) -> bool {
     }
 }
 
+pub fn is_adjacent_def_modifier(node: &CallNode, _checker: &Checker) -> bool {
+    node.receiver().is_none()
+        && node
+            .arguments()
+            .is_some_and(|arguments| arguments.arguments().iter().next().is_some_and(|first| first.as_def_node().is_some()))
+}
+
 fn in_macro_scope(checker: &Checker) -> bool {
     if checker.ancestors().is_empty() {
         return true;
