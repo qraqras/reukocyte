@@ -8,3 +8,6 @@ repository.workspace = true
 
 [dependencies]
 ruby-prism.workspace = true
+
+[build-dependencies]
+regex = "1"

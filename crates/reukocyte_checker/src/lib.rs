@@ -1,4 +1,3 @@
-mod analyze;
 mod checker;
 mod config;
 mod conflict;

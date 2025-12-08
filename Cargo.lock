@@ -598,6 +598,7 @@ dependencies = [
 name = "reukocyte_checker"
 version = "0.0.1"
 dependencies = [
+ "regex",
  "ruby-prism",
 ]
 

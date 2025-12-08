@@ -2,11 +2,13 @@ use crate::config::Config;
 use crate::diagnostic::RawDiagnostic;
 use crate::locator::LineIndex;
 use crate::rule::RuleId;
-use crate::run_rules;
 use crate::utility::assignment::AssignmentNode;
 use crate::{Diagnostic, Fix, Severity};
 use ruby_prism::{Location, Node, Visit};
 use std::collections::HashSet;
+
+// Include the auto-generated rule registry macros
+include!(concat!(env!("OUT_DIR"), "/rule_registry.rs"));
 
 /// The main checker that traverses the AST and runs rules.
 pub struct Checker<'rk> {
@@ -198,873 +200,873 @@ impl Visit<'_> for Checker<'_> {
     fn visit_leaf_node_enter(&mut self, _node: ruby_prism::Node) {}
     fn visit_leaf_node_leave(&mut self) {}
     fn visit_alias_global_variable_node(&mut self, node: &ruby_prism::AliasGlobalVariableNode) {
-        run_rules!(node, self, AliasGlobalVariableNode<'_>, []);
+        run_alias_global_variable_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_alias_global_variable_node(self, node);
         self.pop_ancestor();
     }
     fn visit_alias_method_node(&mut self, node: &ruby_prism::AliasMethodNode) {
-        run_rules!(node, self, AliasMethodNode<'_>, []);
+        run_alias_method_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_alias_method_node(self, node);
         self.pop_ancestor();
     }
     fn visit_alternation_pattern_node(&mut self, node: &ruby_prism::AlternationPatternNode) {
-        run_rules!(node, self, AlternationPatternNode<'_>, []);
+        run_alternation_pattern_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_alternation_pattern_node(self, node);
         self.pop_ancestor();
     }
     fn visit_and_node(&mut self, node: &ruby_prism::AndNode) {
-        run_rules!(node, self, AndNode<'_>, []);
+        run_and_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_and_node(self, node);
         self.pop_ancestor();
     }
     fn visit_arguments_node(&mut self, node: &ruby_prism::ArgumentsNode) {
-        run_rules!(node, self, ArgumentsNode<'_>, []);
+        run_arguments_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_arguments_node(self, node);
         self.pop_ancestor();
     }
     fn visit_array_node(&mut self, node: &ruby_prism::ArrayNode) {
-        run_rules!(node, self, ArrayNode<'_>, []);
+        run_array_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_array_node(self, node);
         self.pop_ancestor();
     }
     fn visit_array_pattern_node(&mut self, node: &ruby_prism::ArrayPatternNode) {
-        run_rules!(node, self, ArrayPatternNode<'_>, []);
+        run_array_pattern_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_array_pattern_node(self, node);
         self.pop_ancestor();
     }
     fn visit_assoc_node(&mut self, node: &ruby_prism::AssocNode) {
-        run_rules!(node, self, AssocNode<'_>, []);
+        run_assoc_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_assoc_node(self, node);
         self.pop_ancestor();
     }
     fn visit_assoc_splat_node(&mut self, node: &ruby_prism::AssocSplatNode) {
-        run_rules!(node, self, AssocSplatNode<'_>, []);
+        run_assoc_splat_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_assoc_splat_node(self, node);
         self.pop_ancestor();
     }
     fn visit_back_reference_read_node(&mut self, node: &ruby_prism::BackReferenceReadNode) {
-        run_rules!(node, self, BackReferenceReadNode<'_>, []);
+        run_back_reference_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_back_reference_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_begin_node(&mut self, node: &ruby_prism::BeginNode) {
-        run_rules!(node, self, BeginNode<'_>, []);
+        run_begin_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_begin_node(self, node);
         self.pop_ancestor();
     }
     fn visit_block_argument_node(&mut self, node: &ruby_prism::BlockArgumentNode) {
-        run_rules!(node, self, BlockArgumentNode<'_>, []);
+        run_block_argument_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_block_argument_node(self, node);
         self.pop_ancestor();
     }
     fn visit_block_local_variable_node(&mut self, node: &ruby_prism::BlockLocalVariableNode) {
-        run_rules!(node, self, BlockLocalVariableNode<'_>, []);
+        run_block_local_variable_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_block_local_variable_node(self, node);
         self.pop_ancestor();
     }
     fn visit_block_node(&mut self, node: &ruby_prism::BlockNode) {
-        run_rules!(node, self, BlockNode<'_>, []);
+        run_block_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_block_node(self, node);
         self.pop_ancestor();
     }
     fn visit_block_parameter_node(&mut self, node: &ruby_prism::BlockParameterNode) {
-        run_rules!(node, self, BlockParameterNode<'_>, []);
+        run_block_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_block_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_block_parameters_node(&mut self, node: &ruby_prism::BlockParametersNode) {
-        run_rules!(node, self, BlockParametersNode<'_>, []);
+        run_block_parameters_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_block_parameters_node(self, node);
         self.pop_ancestor();
     }
     fn visit_break_node(&mut self, node: &ruby_prism::BreakNode) {
-        run_rules!(node, self, BreakNode<'_>, []);
+        run_break_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_break_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_and_write_node(&mut self, node: &ruby_prism::CallAndWriteNode) {
-        run_rules!(node, self, CallAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_call_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_node(&mut self, node: &ruby_prism::CallNode) {
-        run_rules!(node, self, CallNode<'_>, []);
+        run_call_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_operator_write_node(&mut self, node: &ruby_prism::CallOperatorWriteNode) {
-        run_rules!(node, self, CallOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_call_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_or_write_node(&mut self, node: &ruby_prism::CallOrWriteNode) {
-        run_rules!(node, self, CallOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_call_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_call_target_node(&mut self, node: &ruby_prism::CallTargetNode) {
-        run_rules!(node, self, CallTargetNode<'_>, []);
+        run_call_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_call_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_capture_pattern_node(&mut self, node: &ruby_prism::CapturePatternNode) {
-        run_rules!(node, self, CapturePatternNode<'_>, []);
+        run_capture_pattern_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_capture_pattern_node(self, node);
         self.pop_ancestor();
     }
     fn visit_case_match_node(&mut self, node: &ruby_prism::CaseMatchNode) {
-        run_rules!(node, self, CaseMatchNode<'_>, []);
+        run_case_match_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_case_match_node(self, node);
         self.pop_ancestor();
     }
     fn visit_case_node(&mut self, node: &ruby_prism::CaseNode) {
-        run_rules!(node, self, CaseNode<'_>, []);
+        run_case_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_case_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_node(&mut self, node: &ruby_prism::ClassNode) {
-        run_rules!(node, self, ClassNode<'_>, []);
+        run_class_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_and_write_node(&mut self, node: &ruby_prism::ClassVariableAndWriteNode) {
-        run_rules!(node, self, ClassVariableAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_class_variable_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_operator_write_node(&mut self, node: &ruby_prism::ClassVariableOperatorWriteNode) {
-        run_rules!(node, self, ClassVariableOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_class_variable_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_or_write_node(&mut self, node: &ruby_prism::ClassVariableOrWriteNode) {
-        run_rules!(node, self, ClassVariableOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_class_variable_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_read_node(&mut self, node: &ruby_prism::ClassVariableReadNode) {
-        run_rules!(node, self, ClassVariableReadNode<'_>, []);
+        run_class_variable_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_target_node(&mut self, node: &ruby_prism::ClassVariableTargetNode) {
-        run_rules!(node, self, ClassVariableTargetNode<'_>, []);
+        run_class_variable_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_class_variable_write_node(&mut self, node: &ruby_prism::ClassVariableWriteNode) {
-        run_rules!(node, self, ClassVariableWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_class_variable_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_class_variable_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_and_write_node(&mut self, node: &ruby_prism::ConstantAndWriteNode) {
-        run_rules!(node, self, ConstantAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_operator_write_node(&mut self, node: &ruby_prism::ConstantOperatorWriteNode) {
-        run_rules!(node, self, ConstantOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_or_write_node(&mut self, node: &ruby_prism::ConstantOrWriteNode) {
-        run_rules!(node, self, ConstantOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_and_write_node(&mut self, node: &ruby_prism::ConstantPathAndWriteNode) {
-        run_rules!(node, self, ConstantPathAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_path_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_node(&mut self, node: &ruby_prism::ConstantPathNode) {
-        run_rules!(node, self, ConstantPathNode<'_>, []);
+        run_constant_path_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_operator_write_node(&mut self, node: &ruby_prism::ConstantPathOperatorWriteNode) {
-        run_rules!(node, self, ConstantPathOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_path_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_or_write_node(&mut self, node: &ruby_prism::ConstantPathOrWriteNode) {
-        run_rules!(node, self, ConstantPathOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_path_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_target_node(&mut self, node: &ruby_prism::ConstantPathTargetNode) {
-        run_rules!(node, self, ConstantPathTargetNode<'_>, []);
+        run_constant_path_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_path_write_node(&mut self, node: &ruby_prism::ConstantPathWriteNode) {
-        run_rules!(node, self, ConstantPathWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_path_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_path_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_read_node(&mut self, node: &ruby_prism::ConstantReadNode) {
-        run_rules!(node, self, ConstantReadNode<'_>, []);
+        run_constant_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_target_node(&mut self, node: &ruby_prism::ConstantTargetNode) {
-        run_rules!(node, self, ConstantTargetNode<'_>, []);
+        run_constant_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_constant_write_node(&mut self, node: &ruby_prism::ConstantWriteNode) {
-        run_rules!(node, self, ConstantWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_constant_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_constant_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_def_node(&mut self, node: &ruby_prism::DefNode) {
-        run_rules!(node, self, DefNode<'_>, []);
+        run_def_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_def_node(self, node);
         self.pop_ancestor();
     }
     fn visit_defined_node(&mut self, node: &ruby_prism::DefinedNode) {
-        run_rules!(node, self, DefinedNode<'_>, []);
+        run_defined_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_defined_node(self, node);
         self.pop_ancestor();
     }
     fn visit_else_node(&mut self, node: &ruby_prism::ElseNode) {
-        run_rules!(node, self, ElseNode<'_>, []);
+        run_else_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_else_node(self, node);
         self.pop_ancestor();
     }
     fn visit_embedded_statements_node(&mut self, node: &ruby_prism::EmbeddedStatementsNode) {
-        run_rules!(node, self, EmbeddedStatementsNode<'_>, []);
+        run_embedded_statements_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_embedded_statements_node(self, node);
         self.pop_ancestor();
     }
     fn visit_embedded_variable_node(&mut self, node: &ruby_prism::EmbeddedVariableNode) {
-        run_rules!(node, self, EmbeddedVariableNode<'_>, []);
+        run_embedded_variable_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_embedded_variable_node(self, node);
         self.pop_ancestor();
     }
     fn visit_ensure_node(&mut self, node: &ruby_prism::EnsureNode) {
-        run_rules!(node, self, EnsureNode<'_>, []);
+        run_ensure_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_ensure_node(self, node);
         self.pop_ancestor();
     }
     fn visit_false_node(&mut self, node: &ruby_prism::FalseNode) {
-        run_rules!(node, self, FalseNode<'_>, []);
+        run_false_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_false_node(self, node);
         self.pop_ancestor();
     }
     fn visit_find_pattern_node(&mut self, node: &ruby_prism::FindPatternNode) {
-        run_rules!(node, self, FindPatternNode<'_>, []);
+        run_find_pattern_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_find_pattern_node(self, node);
         self.pop_ancestor();
     }
     fn visit_flip_flop_node(&mut self, node: &ruby_prism::FlipFlopNode) {
-        run_rules!(node, self, FlipFlopNode<'_>, []);
+        run_flip_flop_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_flip_flop_node(self, node);
         self.pop_ancestor();
     }
     fn visit_float_node(&mut self, node: &ruby_prism::FloatNode) {
-        run_rules!(node, self, FloatNode<'_>, []);
+        run_float_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_float_node(self, node);
         self.pop_ancestor();
     }
     fn visit_for_node(&mut self, node: &ruby_prism::ForNode) {
-        run_rules!(node, self, ForNode<'_>, []);
+        run_for_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_for_node(self, node);
         self.pop_ancestor();
     }
     fn visit_forwarding_arguments_node(&mut self, node: &ruby_prism::ForwardingArgumentsNode) {
-        run_rules!(node, self, ForwardingArgumentsNode<'_>, []);
+        run_forwarding_arguments_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_forwarding_arguments_node(self, node);
         self.pop_ancestor();
     }
     fn visit_forwarding_parameter_node(&mut self, node: &ruby_prism::ForwardingParameterNode) {
-        run_rules!(node, self, ForwardingParameterNode<'_>, []);
+        run_forwarding_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_forwarding_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_forwarding_super_node(&mut self, node: &ruby_prism::ForwardingSuperNode) {
-        run_rules!(node, self, ForwardingSuperNode<'_>, []);
+        run_forwarding_super_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_forwarding_super_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_and_write_node(&mut self, node: &ruby_prism::GlobalVariableAndWriteNode) {
-        run_rules!(node, self, GlobalVariableAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_global_variable_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_operator_write_node(&mut self, node: &ruby_prism::GlobalVariableOperatorWriteNode) {
-        run_rules!(node, self, GlobalVariableOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_global_variable_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_or_write_node(&mut self, node: &ruby_prism::GlobalVariableOrWriteNode) {
-        run_rules!(node, self, GlobalVariableOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_global_variable_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_read_node(&mut self, node: &ruby_prism::GlobalVariableReadNode) {
-        run_rules!(node, self, GlobalVariableReadNode<'_>, []);
+        run_global_variable_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_target_node(&mut self, node: &ruby_prism::GlobalVariableTargetNode) {
-        run_rules!(node, self, GlobalVariableTargetNode<'_>, []);
+        run_global_variable_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_global_variable_write_node(&mut self, node: &ruby_prism::GlobalVariableWriteNode) {
-        run_rules!(node, self, GlobalVariableWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_global_variable_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_global_variable_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_hash_node(&mut self, node: &ruby_prism::HashNode) {
-        run_rules!(node, self, HashNode<'_>, []);
+        run_hash_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_hash_node(self, node);
         self.pop_ancestor();
     }
     fn visit_hash_pattern_node(&mut self, node: &ruby_prism::HashPatternNode) {
-        run_rules!(node, self, HashPatternNode<'_>, []);
+        run_hash_pattern_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_hash_pattern_node(self, node);
         self.pop_ancestor();
     }
     fn visit_if_node(&mut self, node: &ruby_prism::IfNode) {
-        run_rules!(node, self, IfNode<'_>, []);
+        run_if_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_if_node(self, node);
         self.pop_ancestor();
     }
     fn visit_imaginary_node(&mut self, node: &ruby_prism::ImaginaryNode) {
-        run_rules!(node, self, ImaginaryNode<'_>, []);
+        run_imaginary_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_imaginary_node(self, node);
         self.pop_ancestor();
     }
     fn visit_implicit_node(&mut self, node: &ruby_prism::ImplicitNode) {
-        run_rules!(node, self, ImplicitNode<'_>, []);
+        run_implicit_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_implicit_node(self, node);
         self.pop_ancestor();
     }
     fn visit_implicit_rest_node(&mut self, node: &ruby_prism::ImplicitRestNode) {
-        run_rules!(node, self, ImplicitRestNode<'_>, []);
+        run_implicit_rest_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_implicit_rest_node(self, node);
         self.pop_ancestor();
     }
     fn visit_in_node(&mut self, node: &ruby_prism::InNode) {
-        run_rules!(node, self, InNode<'_>, []);
+        run_in_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_in_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_and_write_node(&mut self, node: &ruby_prism::IndexAndWriteNode) {
-        run_rules!(node, self, IndexAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_index_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_operator_write_node(&mut self, node: &ruby_prism::IndexOperatorWriteNode) {
-        run_rules!(node, self, IndexOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_index_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_or_write_node(&mut self, node: &ruby_prism::IndexOrWriteNode) {
-        run_rules!(node, self, IndexOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_index_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_index_target_node(&mut self, node: &ruby_prism::IndexTargetNode) {
-        run_rules!(node, self, IndexTargetNode<'_>, []);
+        run_index_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_index_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_and_write_node(&mut self, node: &ruby_prism::InstanceVariableAndWriteNode) {
-        run_rules!(node, self, InstanceVariableAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_instance_variable_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_operator_write_node(&mut self, node: &ruby_prism::InstanceVariableOperatorWriteNode) {
-        run_rules!(node, self, InstanceVariableOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_instance_variable_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_or_write_node(&mut self, node: &ruby_prism::InstanceVariableOrWriteNode) {
-        run_rules!(node, self, InstanceVariableOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_instance_variable_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_read_node(&mut self, node: &ruby_prism::InstanceVariableReadNode) {
-        run_rules!(node, self, InstanceVariableReadNode<'_>, []);
+        run_instance_variable_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_target_node(&mut self, node: &ruby_prism::InstanceVariableTargetNode) {
-        run_rules!(node, self, InstanceVariableTargetNode<'_>, []);
+        run_instance_variable_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_instance_variable_write_node(&mut self, node: &ruby_prism::InstanceVariableWriteNode) {
-        run_rules!(node, self, InstanceVariableWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_instance_variable_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_instance_variable_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_integer_node(&mut self, node: &ruby_prism::IntegerNode) {
-        run_rules!(node, self, IntegerNode<'_>, []);
+        run_integer_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_integer_node(self, node);
         self.pop_ancestor();
     }
     fn visit_interpolated_match_last_line_node(&mut self, node: &ruby_prism::InterpolatedMatchLastLineNode) {
-        run_rules!(node, self, InterpolatedMatchLastLineNode<'_>, []);
+        run_interpolated_match_last_line_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_interpolated_match_last_line_node(self, node);
         self.pop_ancestor();
     }
     fn visit_interpolated_regular_expression_node(&mut self, node: &ruby_prism::InterpolatedRegularExpressionNode) {
-        run_rules!(node, self, InterpolatedRegularExpressionNode<'_>, []);
+        run_interpolated_regular_expression_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_interpolated_regular_expression_node(self, node);
         self.pop_ancestor();
     }
     fn visit_interpolated_string_node(&mut self, node: &ruby_prism::InterpolatedStringNode) {
-        run_rules!(node, self, InterpolatedStringNode<'_>, []);
+        run_interpolated_string_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_interpolated_string_node(self, node);
         self.pop_ancestor();
     }
     fn visit_interpolated_symbol_node(&mut self, node: &ruby_prism::InterpolatedSymbolNode) {
-        run_rules!(node, self, InterpolatedSymbolNode<'_>, []);
+        run_interpolated_symbol_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_interpolated_symbol_node(self, node);
         self.pop_ancestor();
     }
     fn visit_interpolated_x_string_node(&mut self, node: &ruby_prism::InterpolatedXStringNode) {
-        run_rules!(node, self, InterpolatedXStringNode<'_>, []);
+        run_interpolated_x_string_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_interpolated_x_string_node(self, node);
         self.pop_ancestor();
     }
     fn visit_it_local_variable_read_node(&mut self, node: &ruby_prism::ItLocalVariableReadNode) {
-        run_rules!(node, self, ItLocalVariableReadNode<'_>, []);
+        run_it_local_variable_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_it_local_variable_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_it_parameters_node(&mut self, node: &ruby_prism::ItParametersNode) {
-        run_rules!(node, self, ItParametersNode<'_>, []);
+        run_it_parameters_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_it_parameters_node(self, node);
         self.pop_ancestor();
     }
     fn visit_keyword_hash_node(&mut self, node: &ruby_prism::KeywordHashNode) {
-        run_rules!(node, self, KeywordHashNode<'_>, []);
+        run_keyword_hash_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_keyword_hash_node(self, node);
         self.pop_ancestor();
     }
     fn visit_keyword_rest_parameter_node(&mut self, node: &ruby_prism::KeywordRestParameterNode) {
-        run_rules!(node, self, KeywordRestParameterNode<'_>, []);
+        run_keyword_rest_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_keyword_rest_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_lambda_node(&mut self, node: &ruby_prism::LambdaNode) {
-        run_rules!(node, self, LambdaNode<'_>, []);
+        run_lambda_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_lambda_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_and_write_node(&mut self, node: &ruby_prism::LocalVariableAndWriteNode) {
-        run_rules!(node, self, LocalVariableAndWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_local_variable_and_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_and_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_operator_write_node(&mut self, node: &ruby_prism::LocalVariableOperatorWriteNode) {
-        run_rules!(node, self, LocalVariableOperatorWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_local_variable_operator_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_operator_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_or_write_node(&mut self, node: &ruby_prism::LocalVariableOrWriteNode) {
-        run_rules!(node, self, LocalVariableOrWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_local_variable_or_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_or_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_read_node(&mut self, node: &ruby_prism::LocalVariableReadNode) {
-        run_rules!(node, self, LocalVariableReadNode<'_>, []);
+        run_local_variable_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_target_node(&mut self, node: &ruby_prism::LocalVariableTargetNode) {
-        run_rules!(node, self, LocalVariableTargetNode<'_>, []);
+        run_local_variable_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_local_variable_write_node(&mut self, node: &ruby_prism::LocalVariableWriteNode) {
-        run_rules!(node, self, LocalVariableWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_local_variable_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_local_variable_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_match_last_line_node(&mut self, node: &ruby_prism::MatchLastLineNode) {
-        run_rules!(node, self, MatchLastLineNode<'_>, []);
+        run_match_last_line_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_match_last_line_node(self, node);
         self.pop_ancestor();
     }
     fn visit_match_predicate_node(&mut self, node: &ruby_prism::MatchPredicateNode) {
-        run_rules!(node, self, MatchPredicateNode<'_>, []);
+        run_match_predicate_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_match_predicate_node(self, node);
         self.pop_ancestor();
     }
     fn visit_match_required_node(&mut self, node: &ruby_prism::MatchRequiredNode) {
-        run_rules!(node, self, MatchRequiredNode<'_>, []);
+        run_match_required_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_match_required_node(self, node);
         self.pop_ancestor();
     }
     fn visit_match_write_node(&mut self, node: &ruby_prism::MatchWriteNode) {
-        run_rules!(node, self, MatchWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_match_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_match_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_missing_node(&mut self, node: &ruby_prism::MissingNode) {
-        run_rules!(node, self, MissingNode<'_>, []);
+        run_missing_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_missing_node(self, node);
         self.pop_ancestor();
     }
     fn visit_module_node(&mut self, node: &ruby_prism::ModuleNode) {
-        run_rules!(node, self, ModuleNode<'_>, []);
+        run_module_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_module_node(self, node);
         self.pop_ancestor();
     }
     fn visit_multi_target_node(&mut self, node: &ruby_prism::MultiTargetNode) {
-        run_rules!(node, self, MultiTargetNode<'_>, []);
+        run_multi_target_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_multi_target_node(self, node);
         self.pop_ancestor();
     }
     fn visit_multi_write_node(&mut self, node: &ruby_prism::MultiWriteNode) {
-        run_rules!(node, self, MultiWriteNode<'_>, []);
-        run_rules!(AssignmentNode::from(node), self, AssignmentNode<'_>, []);
+        run_multi_write_node_rules!(node, self);
+        run_assignment_node_rules!(AssignmentNode::from(node), self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_multi_write_node(self, node);
         self.pop_ancestor();
     }
     fn visit_next_node(&mut self, node: &ruby_prism::NextNode) {
-        run_rules!(node, self, NextNode<'_>, []);
+        run_next_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_next_node(self, node);
         self.pop_ancestor();
     }
     fn visit_nil_node(&mut self, node: &ruby_prism::NilNode) {
-        run_rules!(node, self, NilNode<'_>, []);
+        run_nil_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_nil_node(self, node);
         self.pop_ancestor();
     }
     fn visit_no_keywords_parameter_node(&mut self, node: &ruby_prism::NoKeywordsParameterNode) {
-        run_rules!(node, self, NoKeywordsParameterNode<'_>, []);
+        run_no_keywords_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_no_keywords_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_numbered_parameters_node(&mut self, node: &ruby_prism::NumberedParametersNode) {
-        run_rules!(node, self, NumberedParametersNode<'_>, []);
+        run_numbered_parameters_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_numbered_parameters_node(self, node);
         self.pop_ancestor();
     }
     fn visit_numbered_reference_read_node(&mut self, node: &ruby_prism::NumberedReferenceReadNode) {
-        run_rules!(node, self, NumberedReferenceReadNode<'_>, []);
+        run_numbered_reference_read_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_numbered_reference_read_node(self, node);
         self.pop_ancestor();
     }
     fn visit_optional_keyword_parameter_node(&mut self, node: &ruby_prism::OptionalKeywordParameterNode) {
-        run_rules!(node, self, OptionalKeywordParameterNode<'_>, []);
+        run_optional_keyword_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_optional_keyword_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_optional_parameter_node(&mut self, node: &ruby_prism::OptionalParameterNode) {
-        run_rules!(node, self, OptionalParameterNode<'_>, []);
+        run_optional_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_optional_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_or_node(&mut self, node: &ruby_prism::OrNode) {
-        run_rules!(node, self, OrNode<'_>, []);
+        run_or_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_or_node(self, node);
         self.pop_ancestor();
     }
     fn visit_parameters_node(&mut self, node: &ruby_prism::ParametersNode) {
-        run_rules!(node, self, ParametersNode<'_>, []);
+        run_parameters_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_parameters_node(self, node);
         self.pop_ancestor();
     }
     fn visit_parentheses_node(&mut self, node: &ruby_prism::ParenthesesNode) {
-        run_rules!(node, self, ParenthesesNode<'_>, []);
+        run_parentheses_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_parentheses_node(self, node);
         self.pop_ancestor();
     }
     fn visit_pinned_expression_node(&mut self, node: &ruby_prism::PinnedExpressionNode) {
-        run_rules!(node, self, PinnedExpressionNode<'_>, []);
+        run_pinned_expression_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_pinned_expression_node(self, node);
         self.pop_ancestor();
     }
     fn visit_pinned_variable_node(&mut self, node: &ruby_prism::PinnedVariableNode) {
-        run_rules!(node, self, PinnedVariableNode<'_>, []);
+        run_pinned_variable_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_pinned_variable_node(self, node);
         self.pop_ancestor();
     }
     fn visit_post_execution_node(&mut self, node: &ruby_prism::PostExecutionNode) {
-        run_rules!(node, self, PostExecutionNode<'_>, []);
+        run_post_execution_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_post_execution_node(self, node);
         self.pop_ancestor();
     }
     fn visit_pre_execution_node(&mut self, node: &ruby_prism::PreExecutionNode) {
-        run_rules!(node, self, PreExecutionNode<'_>, []);
+        run_pre_execution_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_pre_execution_node(self, node);
         self.pop_ancestor();
     }
     fn visit_program_node(&mut self, node: &ruby_prism::ProgramNode) {
-        run_rules!(node, self, ProgramNode<'_>, []);
+        run_program_node_rules!(node, self);
         // self.push_ancestor(node.as_node());
         ruby_prism::visit_program_node(self, node);
         // self.pop_ancestor();
     }
     fn visit_range_node(&mut self, node: &ruby_prism::RangeNode) {
-        run_rules!(node, self, RangeNode<'_>, []);
+        run_range_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_range_node(self, node);
         self.pop_ancestor();
     }
     fn visit_rational_node(&mut self, node: &ruby_prism::RationalNode) {
-        run_rules!(node, self, RationalNode<'_>, []);
+        run_rational_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_rational_node(self, node);
         self.pop_ancestor();
     }
     fn visit_redo_node(&mut self, node: &ruby_prism::RedoNode) {
-        run_rules!(node, self, RedoNode<'_>, []);
+        run_redo_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_redo_node(self, node);
         self.pop_ancestor();
     }
     fn visit_regular_expression_node(&mut self, node: &ruby_prism::RegularExpressionNode) {
-        run_rules!(node, self, RegularExpressionNode<'_>, []);
+        run_regular_expression_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_regular_expression_node(self, node);
         self.pop_ancestor();
     }
     fn visit_required_keyword_parameter_node(&mut self, node: &ruby_prism::RequiredKeywordParameterNode) {
-        run_rules!(node, self, RequiredKeywordParameterNode<'_>, []);
+        run_required_keyword_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_required_keyword_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_required_parameter_node(&mut self, node: &ruby_prism::RequiredParameterNode) {
-        run_rules!(node, self, RequiredParameterNode<'_>, []);
+        run_required_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_required_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_rescue_modifier_node(&mut self, node: &ruby_prism::RescueModifierNode) {
-        run_rules!(node, self, RescueModifierNode<'_>, []);
+        run_rescue_modifier_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_rescue_modifier_node(self, node);
         self.pop_ancestor();
     }
     fn visit_rescue_node(&mut self, node: &ruby_prism::RescueNode) {
-        run_rules!(node, self, RescueNode<'_>, []);
+        run_rescue_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_rescue_node(self, node);
         self.pop_ancestor();
     }
     fn visit_rest_parameter_node(&mut self, node: &ruby_prism::RestParameterNode) {
-        run_rules!(node, self, RestParameterNode<'_>, []);
+        run_rest_parameter_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_rest_parameter_node(self, node);
         self.pop_ancestor();
     }
     fn visit_retry_node(&mut self, node: &ruby_prism::RetryNode) {
-        run_rules!(node, self, RetryNode<'_>, []);
+        run_retry_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_retry_node(self, node);
         self.pop_ancestor();
     }
     fn visit_return_node(&mut self, node: &ruby_prism::ReturnNode) {
-        run_rules!(node, self, ReturnNode<'_>, []);
+        run_return_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_return_node(self, node);
         self.pop_ancestor();
     }
     fn visit_self_node(&mut self, node: &ruby_prism::SelfNode) {
-        run_rules!(node, self, SelfNode<'_>, []);
+        run_self_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_self_node(self, node);
         self.pop_ancestor();
     }
     fn visit_shareable_constant_node(&mut self, node: &ruby_prism::ShareableConstantNode) {
-        run_rules!(node, self, ShareableConstantNode<'_>, []);
+        run_shareable_constant_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_shareable_constant_node(self, node);
         self.pop_ancestor();
     }
     fn visit_singleton_class_node(&mut self, node: &ruby_prism::SingletonClassNode) {
-        run_rules!(node, self, SingletonClassNode<'_>, []);
+        run_singleton_class_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_singleton_class_node(self, node);
         self.pop_ancestor();
     }
     fn visit_source_encoding_node(&mut self, node: &ruby_prism::SourceEncodingNode) {
-        run_rules!(node, self, SourceEncodingNode<'_>, []);
+        run_source_encoding_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_source_encoding_node(self, node);
         self.pop_ancestor();
     }
     fn visit_source_file_node(&mut self, node: &ruby_prism::SourceFileNode) {
-        run_rules!(node, self, SourceFileNode<'_>, []);
+        run_source_file_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_source_file_node(self, node);
         self.pop_ancestor();
     }
     fn visit_source_line_node(&mut self, node: &ruby_prism::SourceLineNode) {
-        run_rules!(node, self, SourceLineNode<'_>, []);
+        run_source_line_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_source_line_node(self, node);
         self.pop_ancestor();
     }
     fn visit_splat_node(&mut self, node: &ruby_prism::SplatNode) {
-        run_rules!(node, self, SplatNode<'_>, []);
+        run_splat_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_splat_node(self, node);
         self.pop_ancestor();
     }
     fn visit_statements_node(&mut self, node: &ruby_prism::StatementsNode) {
-        run_rules!(node, self, StatementsNode<'_>, []);
+        run_statements_node_rules!(node, self);
         // Skip adding ProgramNode's StatementsNode to ancestors
         // (ProgramNode is the root and not pushed to ancestors)
         let should_track = self.parent().is_some();
@@ -1073,67 +1075,67 @@ impl Visit<'_> for Checker<'_> {
         should_track.then(|| self.pop_ancestor());
     }
     fn visit_string_node(&mut self, node: &ruby_prism::StringNode) {
-        run_rules!(node, self, StringNode<'_>, []);
+        run_string_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_string_node(self, node);
         self.pop_ancestor();
     }
     fn visit_super_node(&mut self, node: &ruby_prism::SuperNode) {
-        run_rules!(node, self, SuperNode<'_>, []);
+        run_super_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_super_node(self, node);
         self.pop_ancestor();
     }
     fn visit_symbol_node(&mut self, node: &ruby_prism::SymbolNode) {
-        run_rules!(node, self, SymbolNode<'_>, []);
+        run_symbol_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_symbol_node(self, node);
         self.pop_ancestor();
     }
     fn visit_true_node(&mut self, node: &ruby_prism::TrueNode) {
-        run_rules!(node, self, TrueNode<'_>, []);
+        run_true_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_true_node(self, node);
         self.pop_ancestor();
     }
     fn visit_undef_node(&mut self, node: &ruby_prism::UndefNode) {
-        run_rules!(node, self, UndefNode<'_>, []);
+        run_undef_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_undef_node(self, node);
         self.pop_ancestor();
     }
     fn visit_unless_node(&mut self, node: &ruby_prism::UnlessNode) {
-        run_rules!(node, self, UnlessNode<'_>, []);
+        run_unless_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_unless_node(self, node);
         self.pop_ancestor();
     }
     fn visit_until_node(&mut self, node: &ruby_prism::UntilNode) {
-        run_rules!(node, self, UntilNode<'_>, []);
+        run_until_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_until_node(self, node);
         self.pop_ancestor();
     }
     fn visit_when_node(&mut self, node: &ruby_prism::WhenNode) {
-        run_rules!(node, self, WhenNode<'_>, []);
+        run_when_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_when_node(self, node);
         self.pop_ancestor();
     }
     fn visit_while_node(&mut self, node: &ruby_prism::WhileNode) {
-        run_rules!(node, self, WhileNode<'_>, []);
+        run_while_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_while_node(self, node);
         self.pop_ancestor();
     }
     fn visit_x_string_node(&mut self, node: &ruby_prism::XStringNode) {
-        run_rules!(node, self, XStringNode<'_>, []);
+        run_x_string_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_x_string_node(self, node);
         self.pop_ancestor();
     }
     fn visit_yield_node(&mut self, node: &ruby_prism::YieldNode) {
-        run_rules!(node, self, YieldNode<'_>, []);
+        run_yield_node_rules!(node, self);
         self.push_ancestor(node.as_node());
         ruby_prism::visit_yield_node(self, node);
         self.pop_ancestor();
