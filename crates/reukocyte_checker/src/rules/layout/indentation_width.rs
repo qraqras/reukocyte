@@ -3,18 +3,21 @@ use crate::config::layout::access_modifier_indentation::EnforcedStyle as AccessM
 use crate::config::layout::def_end_alignment::EnforcedStyleAlignWith as DefAlignWith;
 use crate::config::layout::end_alignment::EnforcedStyleAlignWith as EndAlignWith;
 use crate::config::layout::indentation_consistency::EnforcedStyle;
-use crate::diagnostic::{Edit, Fix, Severity};
+use crate::custom_nodes::AssignmentNode;
+use crate::diagnostic::Edit;
+use crate::diagnostic::Fix;
+use crate::diagnostic::Severity;
 use crate::rule::*;
 use crate::utility::access_modifier::*;
 use crate::utility::call_node::first_part_of_call_chain;
 use reukocyte_macros::check;
 use ruby_prism::*;
 
+/// Layout/IndentationWidth rule.
 pub struct IndentationWidth;
 impl Rule for IndentationWidth {
     const ID: RuleId = RuleId::Layout(LayoutRule::IndentationWidth);
 }
-
 #[check(StatementsNode)]
 impl Check<StatementsNode<'_>> for IndentationWidth {
     fn check(node: &StatementsNode, checker: &mut Checker) {
@@ -29,6 +32,7 @@ impl Check<StatementsNode<'_>> for IndentationWidth {
                 Node::ForNode { .. } => check_statements(&parent.location(), node, checker),
                 Node::IfNode { .. } => check_if_node(&parent.as_if_node().unwrap(), node, checker, None),
                 Node::InNode { .. } => check_statements(&parent.location(), node, checker),
+                Node::LambdaNode { .. } => check_lambda_node(&parent.as_lambda_node().unwrap(), node, checker),
                 Node::ModuleNode { .. } => check_module_node(&parent.as_module_node().unwrap(), node, checker),
                 Node::RescueNode { .. } => check_statements(&parent.location(), node, checker),
                 Node::SingletonClassNode { .. } => check_singleton_class_node(&parent.as_singleton_class_node().unwrap(), node, checker),
@@ -39,6 +43,45 @@ impl Check<StatementsNode<'_>> for IndentationWidth {
                 _ => {}
             }
         };
+    }
+}
+#[check(AssignmentNode)]
+impl Check<AssignmentNode<'_>> for IndentationWidth {
+    fn check(node: &AssignmentNode, checker: &mut Checker) {
+        let rhs = node.value();
+        let first_part_of_rhs = first_part_of_call_chain(rhs);
+        if let Some(rhs) = first_part_of_rhs {
+            let should_variable_alignment = match checker.config().layout.end_alignment.enforced_style_align_with {
+                EndAlignWith::StartOfLine => !checker.line_index().is_first_on_line(rhs.location().start_offset()),
+                EndAlignWith::Keyword => false,
+                EndAlignWith::Variable => !checker.line_index().is_first_on_line(rhs.location().start_offset()),
+            };
+            let base = if should_variable_alignment { &node.as_node() } else { &rhs };
+            match rhs {
+                Node::IfNode { .. } => {
+                    let if_node = rhs.as_if_node().unwrap();
+                    if let Some(statements) = &if_node.statements() {
+                        check_if_node(&if_node, statements, checker, Some(&base.location()))
+                    }
+                    checker.ignore_node(&if_node.location());
+                }
+                Node::UntilNode { .. } => {
+                    let until_node = rhs.as_until_node().unwrap();
+                    if let Some(statements) = &until_node.statements() {
+                        check_until_node(&until_node, statements, checker, Some(&base.location()))
+                    }
+                    checker.ignore_node(&until_node.location());
+                }
+                Node::WhileNode { .. } => {
+                    let while_node = rhs.as_while_node().unwrap();
+                    if let Some(statements) = &while_node.statements() {
+                        check_while_node(&while_node, statements, checker, Some(&base.location()))
+                    }
+                    checker.ignore_node(&while_node.location());
+                }
+                _ => {}
+            }
+        }
     }
 }
 
@@ -109,6 +152,19 @@ fn check_if_node(if_node: &IfNode, statements: &StatementsNode, checker: &mut Ch
     }
 }
 
+/// Check [`LambdaNode`] for indentation width violations.
+fn check_lambda_node(lambda_node: &LambdaNode, statements: &StatementsNode, checker: &mut Checker) {
+    let closing_loc = lambda_node.closing_loc();
+    // Skip single-line blocks like `-> { do_something }`
+    if !checker.line_index().is_first_on_line(closing_loc.start_offset()) {
+        return;
+    }
+    match checker.config().layout.indentation_consistency.enforced_style {
+        EnforcedStyle::Normal => check_statements(&closing_loc, statements, checker),
+        EnforcedStyle::IndentedInternalMethods => check_members(&closing_loc, statements, checker),
+    }
+}
+
 /// Check [`ModuleNode`] for indentation width violations.
 fn check_module_node(module_node: &ModuleNode, statements: &StatementsNode, checker: &mut Checker) {
     // Skip single-line class: `class Foo; def bar; end; end`
@@ -167,43 +223,6 @@ fn check_while_node(while_node: &WhileNode, statements: &StatementsNode, checker
         match base {
             Some(base) => check_statements(base, statements, checker),
             None => check_statements(&while_node.location(), statements, checker),
-        }
-    }
-}
-
-/// Check assignment nodes for indentation width violations.
-pub fn check_assignment(node: Node, rhs: Node, checker: &mut Checker) {
-    let rhs = first_part_of_call_chain(rhs);
-    if let Some(rhs) = rhs {
-        let should_variable_alignment = match checker.config().layout.end_alignment.enforced_style_align_with {
-            EndAlignWith::StartOfLine => !checker.line_index().is_first_on_line(rhs.location().start_offset()),
-            EndAlignWith::Keyword => false,
-            EndAlignWith::Variable => !checker.line_index().is_first_on_line(rhs.location().start_offset()),
-        };
-        let base = if should_variable_alignment { &node } else { &rhs };
-        match rhs {
-            Node::IfNode { .. } => {
-                let if_node = rhs.as_if_node().unwrap();
-                if let Some(statements) = &if_node.statements() {
-                    check_if_node(&if_node, statements, checker, Some(&base.location()))
-                }
-                checker.ignore_node(&if_node.location());
-            }
-            Node::UntilNode { .. } => {
-                let until_node = rhs.as_until_node().unwrap();
-                if let Some(statements) = &until_node.statements() {
-                    check_until_node(&until_node, statements, checker, Some(&base.location()))
-                }
-                checker.ignore_node(&until_node.location());
-            }
-            Node::WhileNode { .. } => {
-                let while_node = rhs.as_while_node().unwrap();
-                if let Some(statements) = &while_node.statements() {
-                    check_while_node(&while_node, statements, checker, Some(&base.location()))
-                }
-                checker.ignore_node(&while_node.location());
-            }
-            _ => {}
         }
     }
 }

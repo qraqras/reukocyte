@@ -46,6 +46,44 @@ pub enum AssignmentNode<'a> {
 }
 
 impl<'a> AssignmentNode<'a> {
+    /// Get the underlying node as a generic `Node`.
+    pub fn as_node(&self) -> Node<'a> {
+        match self {
+            Self::CallAndWrite(n) => n.as_node(),
+            Self::CallOperatorWrite(n) => n.as_node(),
+            Self::CallOrWrite(n) => n.as_node(),
+            Self::ClassVariableAndWrite(n) => n.as_node(),
+            Self::ClassVariableOperatorWrite(n) => n.as_node(),
+            Self::ClassVariableOrWrite(n) => n.as_node(),
+            Self::ClassVariableWrite(n) => n.as_node(),
+            Self::ConstantAndWrite(n) => n.as_node(),
+            Self::ConstantOperatorWrite(n) => n.as_node(),
+            Self::ConstantOrWrite(n) => n.as_node(),
+            Self::ConstantPathAndWrite(n) => n.as_node(),
+            Self::ConstantPathOperatorWrite(n) => n.as_node(),
+            Self::ConstantPathOrWrite(n) => n.as_node(),
+            Self::ConstantPathWrite(n) => n.as_node(),
+            Self::ConstantWrite(n) => n.as_node(),
+            Self::GlobalVariableAndWrite(n) => n.as_node(),
+            Self::GlobalVariableOperatorWrite(n) => n.as_node(),
+            Self::GlobalVariableOrWrite(n) => n.as_node(),
+            Self::GlobalVariableWrite(n) => n.as_node(),
+            Self::IndexAndWrite(n) => n.as_node(),
+            Self::IndexOperatorWrite(n) => n.as_node(),
+            Self::IndexOrWrite(n) => n.as_node(),
+            Self::InstanceVariableAndWrite(n) => n.as_node(),
+            Self::InstanceVariableOperatorWrite(n) => n.as_node(),
+            Self::InstanceVariableOrWrite(n) => n.as_node(),
+            Self::InstanceVariableWrite(n) => n.as_node(),
+            Self::LocalVariableAndWrite(n) => n.as_node(),
+            Self::LocalVariableOperatorWrite(n) => n.as_node(),
+            Self::LocalVariableOrWrite(n) => n.as_node(),
+            Self::LocalVariableWrite(n) => n.as_node(),
+            Self::MatchWrite(n) => n.as_node(),
+            Self::MultiWrite(n) => n.as_node(),
+        }
+    }
+
     /// Get the location of the entire assignment node.
     pub fn location(&self) -> Location<'a> {
         match self {
