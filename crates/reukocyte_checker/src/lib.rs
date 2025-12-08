@@ -2,6 +2,7 @@ mod checker;
 mod config;
 mod conflict;
 mod corrector;
+pub mod custom_nodes;
 mod diagnostic;
 mod fix;
 mod locator;

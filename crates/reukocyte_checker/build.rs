@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 /// All node types for macro generation.
 /// Each entry is the full type path (e.g., "ruby_prism::StatementsNode").
 const ALL_NODE_TYPES: &[&str] = &[
-    // ruby_prism nodes
+    // ********** ruby_prism nodes **********
     "ruby_prism::AliasGlobalVariableNode",
     "ruby_prism::AliasMethodNode",
     "ruby_prism::AlternationPatternNode",
@@ -165,8 +165,8 @@ const ALL_NODE_TYPES: &[&str] = &[
     "ruby_prism::WhileNode",
     "ruby_prism::XStringNode",
     "ruby_prism::YieldNode",
-    // custom nodes
-    "crate::utility::assignment::AssignmentNode",
+    // ********** custom nodes **********
+    "crate::custom_nodes::AssignmentNode",
 ];
 
 fn main() {

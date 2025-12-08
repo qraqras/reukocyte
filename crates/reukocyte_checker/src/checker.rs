@@ -2,7 +2,6 @@ use crate::config::Config;
 use crate::diagnostic::RawDiagnostic;
 use crate::locator::LineIndex;
 use crate::rule::RuleId;
-use crate::utility::assignment::AssignmentNode;
 use crate::{Diagnostic, Fix, Severity};
 use ruby_prism::{Location, Node, Visit};
 use std::collections::HashSet;
@@ -193,12 +192,6 @@ impl<'rk> Checker<'rk> {
 }
 
 impl Visit<'_> for Checker<'_> {
-    // Ancestor tracking: push current node on enter, pop on leave.
-    // Since the current node is at the top of the stack, parent() returns ancestors[len-2].
-    fn visit_branch_node_enter(&mut self, _node: ruby_prism::Node) {}
-    fn visit_branch_node_leave(&mut self) {}
-    fn visit_leaf_node_enter(&mut self, _node: ruby_prism::Node) {}
-    fn visit_leaf_node_leave(&mut self) {}
     fn visit_alias_global_variable_node(&mut self, node: &ruby_prism::AliasGlobalVariableNode) {
         run_alias_global_variable_node_rules!(node, self);
         self.push_ancestor(node.as_node());
@@ -953,6 +946,7 @@ impl Visit<'_> for Checker<'_> {
     }
     fn visit_program_node(&mut self, node: &ruby_prism::ProgramNode) {
         run_program_node_rules!(node, self);
+        // Push/pop ancestor skipped for ProgramNode
         // self.push_ancestor(node.as_node());
         ruby_prism::visit_program_node(self, node);
         // self.pop_ancestor();
