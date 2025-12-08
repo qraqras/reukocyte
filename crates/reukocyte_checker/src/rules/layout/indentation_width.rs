@@ -7,12 +7,15 @@ use crate::diagnostic::{Edit, Fix, Severity};
 use crate::rule::*;
 use crate::utility::access_modifier::*;
 use crate::utility::call_node::first_part_of_call_chain;
+use reukocyte_macros::check;
 use ruby_prism::*;
 
 pub struct IndentationWidth;
 impl Rule for IndentationWidth {
     const ID: RuleId = RuleId::Layout(LayoutRule::IndentationWidth);
 }
+
+#[check(StatementsNode)]
 impl Check<StatementsNode<'_>> for IndentationWidth {
     fn check(node: &StatementsNode, checker: &mut Checker) {
         if let Some(parent) = checker.parent() {

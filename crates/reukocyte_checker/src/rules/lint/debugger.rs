@@ -16,6 +16,8 @@ const DEBUGGER_RECEIVERS: &[(&[u8], &[u8])] = &[
     (b"Pry", b"rescue"),
 ];
 
+use reukocyte_macros::check;
+
 /// Lint/Debugger rule - detects debugger statements left in code.
 ///
 /// Note: No fix is provided because removing debugger statements
@@ -26,6 +28,7 @@ impl Rule for Debugger {
     const ID: RuleId = RuleId::Lint(LintRule::Debugger);
 }
 
+#[check(CallNode)]
 impl Check<CallNode<'_>> for Debugger {
     fn check(node: &CallNode, checker: &mut Checker) {
         let method_name = node.name().as_slice();
