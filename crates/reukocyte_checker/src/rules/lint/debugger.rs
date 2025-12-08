@@ -1,6 +1,7 @@
 use crate::Checker;
 use crate::Severity;
 use crate::rule::{Check, LintRule, Rule, RuleId};
+use reukocyte_macros::check;
 use ruby_prism::CallNode;
 
 /// Standalone debugger method names to detect (no receiver)
@@ -15,8 +16,6 @@ const DEBUGGER_RECEIVERS: &[(&[u8], &[u8])] = &[
     (b"binding", b"console"),
     (b"Pry", b"rescue"),
 ];
-
-use reukocyte_macros::check;
 
 /// Lint/Debugger rule - detects debugger statements left in code.
 ///
