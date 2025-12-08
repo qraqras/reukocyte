@@ -1,142 +1,216 @@
-//! Layout/EndAlignment rule.
-//!
-//! Checks whether the `end` keyword is aligned properly.
-
-#![allow(dead_code, unused_variables)]
-
 use crate::checker::Checker;
 use crate::config::layout::end_alignment::EnforcedStyleAlignWith;
+use crate::custom_nodes::AssignmentNode;
+use crate::custom_nodes::ConditionalNode;
+use crate::diagnostic::Edit;
+use crate::diagnostic::Fix;
 use crate::rule::{Check, LayoutRule, Rule, RuleId};
-use crate::utility::call_node::*;
-use ruby_prism::StatementsNode;
+use crate::utility::call_node::first_part_of_call_chain;
+use crate::utility::node::if_conditional_node;
+use crate::utility::node::is_assignment;
+use reukocyte_macros::check;
 use ruby_prism::*;
 
-// ============================================================================
-// EndAlignment Rule Definition
-// ============================================================================
-
 /// Layout/EndAlignment rule.
-///
-/// This rule checks whether the `end` keyword is aligned with the
-/// corresponding keyword (`class`, `module`, `if`, etc.) or with the
-/// start of the line.
 pub struct EndAlignment;
-
 impl Rule for EndAlignment {
     const ID: RuleId = RuleId::Layout(LayoutRule::EndAlignment);
 }
-
-impl Check<StatementsNode<'_>> for EndAlignment {
-    fn check(node: &StatementsNode, checker: &mut Checker) {
-        check_statements(node, checker);
+#[check(ClassNode)]
+impl Check<ClassNode<'_>> for EndAlignment {
+    fn check(node: &ClassNode, checker: &mut Checker) {
+        check_other_alignment(node.location(), node.class_keyword_loc(), node.end_keyword_loc(), checker);
     }
 }
-
-// ============================================================================
-// Implementation
-// ============================================================================
-
-// Target nodes:
-// ClassNode
-// ModuleNode
-// IfNode
-// ElseNode (parent is IfNode)
-// UnlessNode
-// WhileNode
-// UntilNode
-// CaseNode
-// CaseMatchNode
-// Assignments
-
-fn check_statements(statements: &StatementsNode, checker: &mut Checker) {
-    let line_index = checker.line_index();
-    if let Some(parent) = checker.parent() {
-        match parent {
-            Node::ClassNode { .. } => {
-                let class_node = parent.as_class_node().unwrap();
-                check_other_alignment(
-                    &class_node.class_keyword_loc(),
-                    line_index.line_start_offset(class_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::SingletonClassNode { .. } => {
-                // TODO: 代入文の右辺だった場合は、check_assignmentで処理すること
-                let singleton_class_node = parent.as_singleton_class_node().unwrap();
-                check_other_alignment(
-                    &singleton_class_node.class_keyword_loc(),
-                    line_index.line_start_offset(singleton_class_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::ModuleNode { .. } => {
-                let module_node = parent.as_module_node().unwrap();
-                check_other_alignment(
-                    &module_node.module_keyword_loc(),
-                    line_index.line_start_offset(module_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::IfNode { .. } => {
-                let if_node = parent.as_if_node().unwrap();
-                // If not ternary, check alignment of 'if' keyword
-                if let Some(if_keyword_loc) = if_node.if_keyword_loc() {
-                    check_other_alignment(&if_keyword_loc, line_index.line_start_offset(if_node.location().start_offset()), checker);
+#[check(SingletonClassNode)]
+impl Check<SingletonClassNode<'_>> for EndAlignment {
+    fn check(node: &SingletonClassNode, checker: &mut Checker) {
+        if let Some(parent) = checker.parent()
+            && is_assignment(parent)
+        {
+            check_asgn_alignment(parent.location(), node.location(), node.class_keyword_loc(), node.end_keyword_loc(), checker);
+        } else {
+            check_other_alignment(node.location(), node.class_keyword_loc(), node.end_keyword_loc(), checker);
+        }
+    }
+}
+#[check(ModuleNode)]
+impl Check<ModuleNode<'_>> for EndAlignment {
+    fn check(node: &ModuleNode, checker: &mut Checker) {
+        check_other_alignment(node.location(), node.module_keyword_loc(), node.end_keyword_loc(), checker);
+    }
+}
+#[check(IfNode)]
+impl Check<IfNode<'_>> for EndAlignment {
+    fn check(node: &IfNode, checker: &mut Checker) {
+        // If not ternary, check alignment of 'if' keyword
+        if let Some(if_keyword_loc) = node.if_keyword_loc()
+            && let Some(end_keyword_loc) = node.end_keyword_loc()
+        {
+            check_other_alignment(node.location(), if_keyword_loc, end_keyword_loc, checker);
+        }
+    }
+}
+#[check(UnlessNode)]
+impl Check<UnlessNode<'_>> for EndAlignment {
+    fn check(node: &UnlessNode, checker: &mut Checker) {
+        if let Some(end_keyword_loc) = node.end_keyword_loc() {
+            check_other_alignment(node.location(), node.keyword_loc(), end_keyword_loc, checker);
+        }
+    }
+}
+#[check(WhileNode)]
+impl Check<WhileNode<'_>> for EndAlignment {
+    fn check(node: &WhileNode, checker: &mut Checker) {
+        if let Some(closing_loc) = node.closing_loc() {
+            check_other_alignment(node.location(), node.keyword_loc(), closing_loc, checker);
+        }
+    }
+}
+#[check(UntilNode)]
+impl Check<UntilNode<'_>> for EndAlignment {
+    fn check(node: &UntilNode, checker: &mut Checker) {
+        if let Some(closing_loc) = node.closing_loc() {
+            check_other_alignment(node.location(), node.keyword_loc(), closing_loc, checker);
+        }
+    }
+}
+#[check(CaseNode)]
+impl Check<CaseNode<'_>> for EndAlignment {
+    fn check(node: &CaseNode, checker: &mut Checker) {
+        if let Some(parent) = checker.parent()
+            && parent.as_arguments_node().is_some()
+        {
+            check_asgn_alignment(
+                checker.ancestor(1).unwrap().location(),
+                node.location(),
+                node.case_keyword_loc(),
+                node.end_keyword_loc(),
+                checker,
+            );
+        } else {
+            check_other_alignment(node.location(), node.case_keyword_loc(), node.end_keyword_loc(), checker);
+        }
+    }
+}
+#[check(CaseMatchNode)]
+impl Check<CaseMatchNode<'_>> for EndAlignment {
+    fn check(node: &CaseMatchNode, checker: &mut Checker) {
+        if let Some(parent) = checker.parent()
+            && parent.as_arguments_node().is_some()
+        {
+            check_asgn_alignment(
+                checker.ancestor(1).unwrap().location(),
+                node.location(),
+                node.case_keyword_loc(),
+                node.end_keyword_loc(),
+                checker,
+            );
+        } else {
+            check_other_alignment(node.location(), node.case_keyword_loc(), node.end_keyword_loc(), checker);
+        }
+    }
+}
+#[check(AssignmentNode)]
+impl Check<AssignmentNode<'_>> for EndAlignment {
+    fn check(node: &AssignmentNode, checker: &mut Checker) {
+        if let Some(rhs) = first_part_of_call_chain(node.value()) {
+            if_conditional_node(&rhs, |conditional_node| {
+                if matches!(conditional_node, ConditionalNode::IfNode(n) if n.if_keyword_loc().is_none()) {
+                    // Skip ternary if nodes
+                    return;
                 }
-            }
-            Node::ElseNode { .. } => {}
-            Node::UnlessNode { .. } => {
-                let unless_node = parent.as_unless_node().unwrap();
-                check_other_alignment(
-                    &unless_node.keyword_loc(),
-                    line_index.line_start_offset(unless_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::WhileNode { .. } => {
-                let while_node = parent.as_while_node().unwrap();
-                check_other_alignment(
-                    &while_node.keyword_loc(),
-                    line_index.line_start_offset(while_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::UntilNode { .. } => {
-                let until_node = parent.as_until_node().unwrap();
-                check_other_alignment(
-                    &until_node.keyword_loc(),
-                    line_index.line_start_offset(until_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::CaseNode { .. } => {
-                // TODO: 代入文の右辺だった場合は、check_assignmentで処理すること
-                let case_node = parent.as_case_node().unwrap();
-                check_other_alignment(
-                    &case_node.case_keyword_loc(),
-                    line_index.line_start_offset(case_node.location().start_offset()),
-                    checker,
-                );
-            }
-            Node::CaseMatchNode { .. } => {
-                // TODO: 代入文の右辺だった場合は、check_assignmentで処理すること
-                let case_match_node = parent.as_case_match_node().unwrap();
-                check_other_alignment(
-                    &case_match_node.case_keyword_loc(),
-                    line_index.line_start_offset(case_match_node.location().start_offset()),
-                    checker,
-                );
-            }
-            _ => {}
+                if let Some(keyword_loc) = conditional_node.keyword_loc()
+                    && let Some(end_keyword_loc) = conditional_node.end_keyword_loc()
+                {
+                    check_asgn_alignment(node.location(), conditional_node.location(), keyword_loc, end_keyword_loc, checker);
+                }
+            });
         }
     }
 }
 
-pub fn on_assignment(node: Node, rhs: Node) {
-    if let Some(rhs) = first_part_of_call_chain(rhs) {
-        // if is_conditional(&rhs) ||
-    }
+fn check_other_alignment(node_loc: Location, keyword_loc: Location, end_loc: Location, checker: &mut Checker) {
+    check_end_kw_alignment(
+        &node_loc,
+        &end_loc,
+        &keyword_loc,
+        &keyword_loc,
+        checker.line_index().line_start_offset(node_loc.start_offset()),
+        checker,
+    );
 }
 
-fn check_other_alignment(keyword: &Location, start_of_line: usize, checker: &mut Checker) {}
-fn check_asgn_alignment(node: &Node, keyword: &Location, rhs: &Node, checker: &mut Checker) {}
+fn check_asgn_alignment(outer_loc: Location, inner_loc: Location, inner_keyword_loc: Location, inner_end_loc: Location, checker: &mut Checker) {
+    check_end_kw_alignment(
+        &outer_loc,
+        &inner_end_loc,
+        &inner_keyword_loc,
+        match checker.line_index().are_on_same_line(outer_loc.end_offset(), inner_loc.start_offset()) {
+            true => &outer_loc,
+            false => &inner_loc,
+        },
+        checker.line_index().line_start_offset(inner_loc.start_offset()),
+        checker,
+    );
+    checker.ignore_node(&inner_loc);
+}
+
+fn check_end_kw_alignment(loc: &Location, end_loc: &Location, keyword_loc: &Location, variable_loc: &Location, start_of_line: usize, checker: &mut Checker) {
+    if checker.is_ignored_node(loc.start_offset(), loc.end_offset()) {
+        return;
+    }
+
+    let line_index = checker.line_index();
+    let column_delta = match checker.config().layout.end_alignment.enforced_style_align_with {
+        EnforcedStyleAlignWith::Keyword => {
+            let are_same_line = line_index.are_on_same_line(keyword_loc.start_offset(), end_loc.start_offset());
+            if are_same_line {
+                return;
+            }
+            let column_delta = line_index.column_offset_between(keyword_loc.start_offset(), end_loc.start_offset());
+            if column_delta == 0 {
+                return;
+            }
+            column_delta
+        }
+        EnforcedStyleAlignWith::Variable => {
+            let are_same_line = line_index.are_on_same_line(end_loc.start_offset(), variable_loc.start_offset());
+            if are_same_line {
+                return;
+            }
+            let column_delta = line_index.column_offset_between(end_loc.start_offset(), variable_loc.start_offset());
+            if column_delta == 0 {
+                return;
+            }
+            column_delta
+        }
+        EnforcedStyleAlignWith::StartOfLine => {
+            let are_same_line = line_index.are_on_same_line(end_loc.start_offset(), start_of_line);
+            if are_same_line {
+                return;
+            }
+            let column_delta = line_index.column_offset_between(end_loc.start_offset(), start_of_line);
+            if column_delta == 0 {
+                return;
+            }
+            column_delta
+        }
+    };
+    let fix = if column_delta > 0 {
+        let end = end_loc.start_offset();
+        let start = end as i32 - column_delta;
+        Fix::safe(vec![Edit::deletion(start as usize, end)])
+    } else {
+        Fix::safe(vec![Edit::insertion(end_loc.start_offset(), " ".repeat(column_delta.abs() as usize))])
+    };
+
+    checker.report(
+        EndAlignment::ID,
+        format!("`end` keyword should be aligned with its opening keyword."),
+        crate::diagnostic::Severity::Convention,
+        end_loc.start_offset(),
+        end_loc.end_offset(),
+        Some(fix),
+    );
+}

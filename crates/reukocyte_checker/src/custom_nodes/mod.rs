@@ -17,5 +17,7 @@
 //! ```
 
 mod assignment;
+mod conditional;
 
 pub use assignment::AssignmentNode;
+pub use conditional::ConditionalNode;

@@ -1,8 +1,3 @@
-//! Assignment node wrapper for unified handling of all assignment types.
-//!
-//! This module provides an enum wrapper that unifies all assignment node types,
-//! allowing rules to handle them with common logic.
-
 use ruby_prism::*;
 
 /// A wrapper enum for all assignment node types.

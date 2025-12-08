@@ -1,17 +1,14 @@
-class Test
+class Outer
   def foo; end
   def bar; end
   def baz; end
+  class Inner
+    def qux; end
+  end
 end
 
-begin
-  puts 1
+x =if condition
+     'a'
 else
-  puts 2
-end
-
-test = if condition
-  'a'
-    else
-      'b'
-    end
+  'b'
+   end
