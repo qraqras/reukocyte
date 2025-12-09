@@ -1,0 +1,20 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/qraqras/reukocyte"
+
+[workspace.dependencies]
+# Internal crates
+reukocyte_checker = { path = "crates/reukocyte_checker" }
+
+# Ruby parser
+ruby-prism = "1.6"
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }

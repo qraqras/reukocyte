@@ -1,0 +1,15 @@
+[package]
+name = "reukocyte"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "rueko"
+path = "src/main.rs"
+
+[dependencies]
+reukocyte_checker.workspace = true
+clap = { version = "4", features = ["derive"] }
