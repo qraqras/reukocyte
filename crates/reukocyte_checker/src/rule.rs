@@ -40,6 +40,7 @@ impl RuleId {
     pub fn conflicts_with(&self) -> &'static [RuleId] {
         match self {
             Self::Layout(LayoutRule::BeginEndAlignment) => &[],
+            Self::Layout(LayoutRule::DefEndAlignment) => &[],
             Self::Layout(LayoutRule::EmptyLines) => &[],
             Self::Layout(LayoutRule::EndAlignment) => &[],
             Self::Layout(LayoutRule::IndentationConsistency) => &[],
@@ -78,6 +79,7 @@ impl Category {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum LayoutRule {
     BeginEndAlignment,
+    DefEndAlignment,
     EmptyLines,
     EndAlignment,
     IndentationConsistency,
@@ -92,6 +94,7 @@ impl LayoutRule {
     pub const fn name(&self) -> &'static str {
         match self {
             Self::BeginEndAlignment => "BeginEndAlignment",
+            Self::DefEndAlignment => "DefEndAlignment",
             Self::EmptyLines => "EmptyLines",
             Self::EndAlignment => "EndAlignment",
             Self::IndentationConsistency => "IndentationConsistency",

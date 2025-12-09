@@ -1,4 +1,5 @@
 pub mod begin_end_alignment;
+pub mod def_end_alignment;
 pub mod empty_lines;
 pub mod end_alignment;
 pub mod indentation_consistency;
