@@ -158,6 +158,38 @@ impl<'rk> LineIndex<'rk> {
     pub fn line_count(&self) -> usize {
         self.line_starts.len()
     }
+
+    // ========================================================================
+    // Indentation methods (counting leading whitespace)
+    // ========================================================================
+
+    /// Get the indentation level (0-indexed) at the start of the line containing the offset.
+    ///
+    /// This counts only leading whitespace characters (spaces and tabs).
+    /// Each space or tab counts as 1 (tab width is not expanded).
+    ///
+    /// # Example
+    /// ```ignore
+    /// // "  def" -> indentation is 2
+    /// // "\tdef" -> indentation is 1 (tab counts as 1)
+    /// // "  \tdef" -> indentation is 3 (2 spaces + 1 tab)
+    /// ```
+    pub fn indentation(&self, offset: usize) -> usize {
+        let line_index = self.line_index(offset);
+        let line = self.lines[line_index];
+
+        line.iter().take_while(|&&b| b == b' ' || b == b'\t').count()
+    }
+
+    /// Get the column position (0-indexed) within the line, counting each byte as 1.
+    ///
+    /// Unlike `column_number` which is 1-indexed, this returns 0-indexed position.
+    /// Tabs are counted as 1 character (not expanded).
+    pub fn column(&self, offset: usize) -> usize {
+        let line_index = self.line_index(offset);
+        let line_start = self.line_starts[line_index];
+        offset - line_start
+    }
 }
 
 #[cfg(test)]
@@ -234,5 +266,69 @@ mod tests {
         assert_eq!(index.column_number(2), 3);
         assert_eq!(index.column_number(4), 1); // 'd'
         assert_eq!(index.column_number(8), 5); // 'h'
+    }
+
+    // ========================================================================
+    // Indentation tests
+    // ========================================================================
+
+    #[test]
+    fn test_indentation_spaces() {
+        let source = b"    def foo";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.indentation(0), 4);
+        assert_eq!(index.indentation(4), 4); // offset within same line
+    }
+
+    #[test]
+    fn test_indentation_tab() {
+        let source = b"\tdef foo";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.indentation(0), 1); // tab counts as 1
+    }
+
+    #[test]
+    fn test_indentation_mixed() {
+        // "  \t  def" -> 2 spaces + 1 tab + 2 spaces = 5
+        let source = b"  \t  def";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.indentation(0), 5);
+    }
+
+    #[test]
+    fn test_indentation_no_indent() {
+        let source = b"def foo";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.indentation(0), 0);
+    }
+
+    #[test]
+    fn test_indentation_multiline() {
+        let source = b"class Foo\n  def bar\n    x\n  end\nend";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.indentation(0), 0); // "class Foo"
+        assert_eq!(index.indentation(10), 2); // "  def bar"
+        assert_eq!(index.indentation(20), 4); // "    x"
+        assert_eq!(index.indentation(26), 2); // "  end"
+        assert_eq!(index.indentation(32), 0); // "end"
+    }
+
+    #[test]
+    fn test_column_0indexed() {
+        let source = b"  def foo";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.column(0), 0); // first space
+        assert_eq!(index.column(2), 2); // 'd'
+        assert_eq!(index.column(5), 5); // 'f'
+    }
+
+    #[test]
+    fn test_column_multiline() {
+        let source = b"abc\n  def";
+        let index = LineIndex::from_source(source);
+        assert_eq!(index.column(0), 0); // 'a'
+        assert_eq!(index.column(2), 2); // 'c'
+        assert_eq!(index.column(4), 0); // first space of line 2
+        assert_eq!(index.column(6), 2); // 'd'
     }
 }
