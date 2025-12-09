@@ -86,10 +86,30 @@ impl<'a> SemanticModel<'a> {
         self.current_node_id.and_then(|id| self.nodes.get(id))
     }
 
+    /// Get the currently visiting node with its ID.
+    #[inline]
+    pub fn current_node_with_id(&self) -> Option<(NodeId, &Node<'a>)> {
+        self.current_node_id.and_then(|id| self.nodes.get(id).map(|node| (id, node)))
+    }
+
     /// Get the parent of the current node.
     #[inline]
     pub fn parent(&self) -> Option<&Node<'a>> {
         self.current_node_id.and_then(|id| self.nodes.parent_id(id)).and_then(|pid| self.nodes.get(pid))
+    }
+
+    /// Get the parent of the current node with its ID.
+    #[inline]
+    pub fn parent_with_id(&self) -> Option<(NodeId, &Node<'a>)> {
+        self.current_node_id
+            .and_then(|id| self.nodes.parent_id(id))
+            .and_then(|pid| self.nodes.get(pid).map(|node| (pid, node)))
+    }
+
+    /// Get the parent ID of the current node.
+    #[inline]
+    pub fn parent_id(&self) -> Option<NodeId> {
+        self.current_node_id.and_then(|id| self.nodes.parent_id(id))
     }
 
     /// Get the Nth ancestor of the current node (0 = parent, 1 = grandparent, etc.)
@@ -98,6 +118,20 @@ impl<'a> SemanticModel<'a> {
         self.current_node_id
             .and_then(|id| self.nodes.ancestor_ids(id).nth(n + 1))
             .and_then(|aid| self.nodes.get(aid))
+    }
+
+    /// Get the Nth ancestor of the current node with its ID (0 = parent, 1 = grandparent, etc.)
+    #[inline]
+    pub fn ancestor_with_id(&self, n: usize) -> Option<(NodeId, &Node<'a>)> {
+        self.current_node_id
+            .and_then(|id| self.nodes.ancestor_ids(id).nth(n + 1))
+            .and_then(|aid| self.nodes.get(aid).map(|node| (aid, node)))
+    }
+
+    /// Get the ID of the Nth ancestor of the current node (0 = parent, 1 = grandparent, etc.)
+    #[inline]
+    pub fn ancestor_id(&self, n: usize) -> Option<NodeId> {
+        self.current_node_id.and_then(|id| self.nodes.ancestor_ids(id).nth(n + 1))
     }
 
     /// Iterate over ancestors of the current node (parent, grandparent, ...).
@@ -109,6 +143,17 @@ impl<'a> SemanticModel<'a> {
             .into_iter()
             .flat_map(|id| self.nodes.ancestor_ids(id).skip(1))
             .filter_map(|id| self.nodes.get(id))
+    }
+
+    /// Iterate over ancestors of the current node with their IDs (parent, grandparent, ...).
+    ///
+    /// Does NOT include the current node itself.
+    #[inline]
+    pub fn ancestors_with_ids(&self) -> impl Iterator<Item = (NodeId, &Node<'a>)> + '_ {
+        self.current_node_id
+            .into_iter()
+            .flat_map(|id| self.nodes.ancestor_ids(id).skip(1))
+            .filter_map(|id| self.nodes.get(id).map(|node| (id, node)))
     }
 
     /// Check if any ancestor matches the given predicate.
@@ -137,9 +182,9 @@ impl<'a> SemanticModel<'a> {
         self.nodes.get(node_id)
     }
 
-    /// Get the parent ID of a node.
+    /// Get the parent ID of a specific node.
     #[inline]
-    pub fn parent_id(&self, node_id: NodeId) -> Option<NodeId> {
+    pub fn parent_id_of(&self, node_id: NodeId) -> Option<NodeId> {
         self.nodes.parent_id(node_id)
     }
 
@@ -153,6 +198,12 @@ impl<'a> SemanticModel<'a> {
     #[inline]
     pub fn ancestors_of(&self, node_id: NodeId) -> impl Iterator<Item = &Node<'a>> + '_ {
         self.nodes.ancestors(node_id).skip(1) // Skip the node itself
+    }
+
+    /// Get the ID of the Nth ancestor of a specific node (0 = parent, 1 = grandparent, etc.)
+    #[inline]
+    pub fn ancestor_id_of(&self, node_id: NodeId, n: usize) -> Option<NodeId> {
+        self.nodes.ancestor_ids(node_id).nth(n + 1)
     }
 
     // ========== Internal access ==========

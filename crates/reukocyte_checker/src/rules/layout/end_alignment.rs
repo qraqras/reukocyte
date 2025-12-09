@@ -25,7 +25,7 @@ impl Check<ClassNode<'_>> for EndAlignment {
 #[check(SingletonClassNode)]
 impl Check<SingletonClassNode<'_>> for EndAlignment {
     fn check(node: &SingletonClassNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && is_assignment(parent)
         {
             check_asgn_alignment(parent.location(), node.location(), node.class_keyword_loc(), node.end_keyword_loc(), checker);
@@ -78,11 +78,11 @@ impl Check<UntilNode<'_>> for EndAlignment {
 #[check(CaseNode)]
 impl Check<CaseNode<'_>> for EndAlignment {
     fn check(node: &CaseNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && parent.as_arguments_node().is_some()
         {
             check_asgn_alignment(
-                checker.ancestor(1).unwrap().location(),
+                checker.semantic().ancestor(1).unwrap().location(),
                 node.location(),
                 node.case_keyword_loc(),
                 node.end_keyword_loc(),
@@ -96,11 +96,11 @@ impl Check<CaseNode<'_>> for EndAlignment {
 #[check(CaseMatchNode)]
 impl Check<CaseMatchNode<'_>> for EndAlignment {
     fn check(node: &CaseMatchNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && parent.as_arguments_node().is_some()
         {
             check_asgn_alignment(
-                checker.ancestor(1).unwrap().location(),
+                checker.semantic().ancestor(1).unwrap().location(),
                 node.location(),
                 node.case_keyword_loc(),
                 node.end_keyword_loc(),

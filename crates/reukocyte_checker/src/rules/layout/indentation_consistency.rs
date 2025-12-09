@@ -65,7 +65,7 @@ fn base_column_for_normal_style(node: &StatementsNode, checker: &mut Checker) ->
     {
         let access_modifier_indent = checker.line_index().column_number(first_child.location().start_offset());
         // If the StatementsNode is inside a module/class, ensure access modifier is more indented
-        if let Some(parent) = checker.parent() {
+        if let Some(parent) = checker.semantic().parent() {
             let module_indent = checker.line_index().column_number(parent.location().start_offset());
             if module_indent < access_modifier_indent {
                 return Some(access_modifier_indent);

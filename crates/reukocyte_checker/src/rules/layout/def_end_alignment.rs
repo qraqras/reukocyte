@@ -7,6 +7,7 @@ use crate::rule::LayoutRule;
 use crate::rule::Rule;
 use crate::rule::RuleId;
 use crate::utility::access_modifier::is_access_modifier;
+use crate::utility::call_node;
 use reukocyte_macros::check;
 use ruby_prism::*;
 
@@ -18,11 +19,15 @@ impl Rule for DefEndAlignment {
 #[check(DefNode)]
 impl Check<DefNode<'_>> for DefEndAlignment {
     fn check(node: &DefNode, checker: &mut Checker) {
-        let call_node = checker.ancestor(1).and_then(|grand_parent| grand_parent.as_call_node());
+        let call_node_id = checker
+            .semantic()
+            .ancestor_with_id(1)
+            .and_then(|(id, node)| if node.as_call_node().is_some() { Some(id) } else { None });
         let def = node.def_keyword_loc().start_offset();
         let start_of_line = checker.line_index().indentation(def);
         // FIXME: is_access_modifierをここで呼んでしまうと、DefNodeがマクロスコープにないので正しく判定できない
-        if call_node.is_some_and(|call_node| is_access_modifier(&call_node.as_node(), checker)) {
+
+        if call_node_id.is_some_and(|(id)| is_access_modifier(&id, checker)) {
             check_end_kw_alignment(node, def, start_of_line, checker);
         } else {
             check_end_kw_alignment(node, def, def, checker);

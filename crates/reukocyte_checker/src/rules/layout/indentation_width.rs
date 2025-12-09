@@ -21,7 +21,7 @@ impl Rule for IndentationWidth {
 #[check(StatementsNode)]
 impl Check<StatementsNode<'_>> for IndentationWidth {
     fn check(node: &StatementsNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent() {
+        if let Some(parent) = checker.semantic().parent() {
             match parent {
                 Node::BeginNode { .. } => check_begin_node(&parent.as_begin_node().unwrap(), node, checker),
                 Node::BlockNode { .. } => check_block_node(&parent.as_block_node().unwrap(), node, checker),
@@ -122,7 +122,7 @@ fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker
 fn check_def_node(def_node: &DefNode, statements: &StatementsNode, checker: &mut Checker) {
     // Check if DefNode is a method call argument.
     // AST structure: CallNode -> ArgumentsNode -> DefNode -> StatementsNode
-    let call_node = checker.ancestor(2).and_then(|ancestor| ancestor.as_call_node());
+    let call_node = checker.semantic().ancestor(2).and_then(|ancestor| ancestor.as_call_node());
     match call_node {
         Some(call_node) => match checker.config().layout.def_end_alignment.enforced_style_align_with {
             DefAlignWith::StartOfLine => check_statements(&call_node.location(), statements, checker),
@@ -310,7 +310,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
 
     match checker.config().layout.indentation_consistency.enforced_style {
         EnforcedStyle::Normal => {
-            for member in body.iter() {
+            // Skip the first member (already checked above)
+            for member in body.iter().skip(1) {
                 if is_access_modifier(&member, checker) {
                     continue;
                 }
