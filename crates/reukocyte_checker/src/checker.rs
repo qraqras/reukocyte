@@ -1,90 +1,97 @@
 use crate::config::Config;
 use crate::custom_nodes::AssignmentNode;
+use crate::diagnostic::Diagnostic;
+use crate::diagnostic::Fix;
 use crate::diagnostic::RawDiagnostic;
+use crate::diagnostic::Severity;
 use crate::locator::LineIndex;
 use crate::rule::RuleId;
 use crate::semantic::SemanticModel;
-use crate::{Diagnostic, Fix, Severity};
-use ruby_prism::{Location, Node, Visit};
-use std::collections::HashSet;
+use ruby_prism::*;
+use rustc_hash::FxHashSet;
 
 // Include the auto-generated rule registry macros
 include!(concat!(env!("OUT_DIR"), "/rule_registry.rs"));
 
-/// The main checker that traverses the AST and runs rules.
-pub struct Checker<'rk> {
-    source: &'rk [u8],
-    config: &'rk Config,
-    line_index: LineIndex<'rk>,
-    raw_diagnostics: Vec<RawDiagnostic>,
-    ignored_nodes: HashSet<(usize, usize)>,
-    /// Semantic model for tracking AST node relationships.
-    semantic: SemanticModel<'rk>,
-}
-
 /// A visitor that builds the node index before rules run.
+/// This ensures all nodes have assigned IDs for rules to reference.
 struct IndexingVisitor<'rk, 'checker> {
     semantic: &'checker mut SemanticModel<'rk>,
 }
-
 impl<'rk> Visit<'rk> for IndexingVisitor<'rk, '_> {
     fn visit_branch_node_enter(&mut self, node: Node<'rk>) {
         self.semantic.push_node(node);
     }
-
     fn visit_branch_node_leave(&mut self) {
         self.semantic.pop_node();
     }
-
     fn visit_leaf_node_enter(&mut self, node: Node<'rk>) {
         self.semantic.push_node(node);
     }
-
     fn visit_leaf_node_leave(&mut self) {
         self.semantic.pop_node();
     }
 }
 
+/// The main checker that traverses the AST and runs rules.
+pub struct Checker<'rk> {
+    source: &'rk [u8],
+    config: &'rk Config,
+    ignored_nodes: FxHashSet<(usize, usize)>,
+    line_index: LineIndex<'rk>,
+    raw_diagnostics: Vec<RawDiagnostic>,
+    semantic: SemanticModel<'rk>,
+}
 impl<'rk> Checker<'rk> {
+    /// Create a new Checker instance.
     pub fn new(source: &'rk [u8], config: &'rk Config) -> Self {
         Self {
             source,
             config,
+            ignored_nodes: FxHashSet::default(),
             line_index: LineIndex::from_source(source),
             raw_diagnostics: Vec::new(),
-            ignored_nodes: HashSet::new(),
             semantic: SemanticModel::new(),
         }
     }
-
-    /// Build the node index by visiting all nodes before rules run.
-    ///
-    /// This pre-populates the semantic model with all nodes, enabling
-    /// `node_id_for()` lookups from any node.
+    /// Build the node index by traversing the AST before running rules.
     pub fn build_index(&mut self, root: &Node<'rk>) {
         let mut visitor = IndexingVisitor { semantic: &mut self.semantic };
         visitor.visit(root);
     }
-
+    /// Get the source code being checked.
+    #[inline]
     pub fn source(&self) -> &[u8] {
         self.source
     }
-
+    /// Get the configuration used by the checker.
+    #[inline]
     pub fn config(&self) -> &Config {
         self.config
     }
-
+    /// Get the line index for offset-to-line/column mapping.
+    #[inline]
     pub fn line_index(&self) -> &LineIndex<'rk> {
         &self.line_index
     }
-
-    // ========== Semantic Model ==========
-
     /// Get access to the semantic model.
     #[inline]
     pub fn semantic(&self) -> &SemanticModel<'rk> {
         &self.semantic
     }
+
+    // ======== Rule management ==========
+
+    /// Check if a rule is enabled.
+    ///
+    /// TODO: Implement rule enable/disable logic based on config.
+    /// For now, all rules are enabled.
+    #[inline]
+    pub fn is_enabled(&self, _rule_id: RuleId) -> bool {
+        true
+    }
+
+    // ========= Node stack management ==========
 
     /// Push a node onto the semantic model (called before visiting children).
     #[inline]
@@ -94,37 +101,26 @@ impl<'rk> Checker<'rk> {
         let node: Node<'rk> = unsafe { std::mem::transmute(node) };
         self.semantic.push_node(node);
     }
-
     /// Pop the current node from the semantic model (called after visiting children).
     #[inline]
     fn pop_node(&mut self) {
         self.semantic.pop_node();
     }
 
-    // ========== Ignored nodes ==========
+    // ======== Ignored nodes management ==========
 
     /// Mark a node as ignored (will not be processed by rules).
-    /// This is equivalent to RuboCop's `ignore_node`.
     #[inline]
     pub fn ignore_node(&mut self, location: &Location) {
         self.ignored_nodes.insert((location.start_offset(), location.end_offset()));
     }
-
     /// Check if a node is exactly one of the ignored nodes.
-    /// This is equivalent to RuboCop's `ignored_node?`.
     #[inline]
     pub fn is_ignored_node(&self, start_offset: usize, end_offset: usize) -> bool {
         self.ignored_nodes.contains(&(start_offset, end_offset))
     }
 
-    /// Check if a node is part of (contained within) any ignored node.
-    /// This is equivalent to RuboCop's `part_of_ignored_node?`.
-    #[inline]
-    pub fn is_part_of_ignored_node(&self, start_offset: usize, end_offset: usize) -> bool {
-        self.ignored_nodes
-            .iter()
-            .any(|&(ignored_start, ignored_end)| ignored_start <= start_offset && end_offset <= ignored_end)
-    }
+    // ========= Diagnostic reporting ==========
 
     /// Report a diagnostic (deferred line/column calculation).
     #[inline]
@@ -138,40 +134,20 @@ impl<'rk> Checker<'rk> {
             fix,
         });
     }
-
     /// Convert raw diagnostics to full diagnostics with line/column info.
     /// Uses batch processing for efficient line number resolution.
     pub fn into_diagnostics(mut self) -> Vec<Diagnostic> {
         if self.raw_diagnostics.is_empty() {
             return Vec::new();
         }
-
-        // Sort by offset for efficient batch resolution
         self.raw_diagnostics.sort_by_key(|d| (d.start, d.end));
-
-        // Collect offsets for batch resolution
         let offsets: Vec<(usize, usize)> = self.raw_diagnostics.iter().map(|d| (d.start, d.end)).collect();
-
-        // Batch resolve all line/column pairs
         let resolved = self.line_index.batch_line_column(&offsets);
-
-        // Convert to full diagnostics
         self.raw_diagnostics
             .into_iter()
             .zip(resolved)
             .map(|(raw, (line_start, line_end, column_start, column_end))| raw.resolve(line_start, line_end, column_start, column_end))
             .collect()
-    }
-
-    // ========== Rule enablement ==========
-
-    /// Check if a rule is enabled.
-    ///
-    /// TODO: Implement rule enable/disable logic based on config.
-    /// For now, all rules are enabled.
-    #[inline]
-    pub fn is_enabled(&self, _rule_id: RuleId) -> bool {
-        true
     }
 }
 

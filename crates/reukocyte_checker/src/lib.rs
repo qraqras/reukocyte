@@ -9,7 +9,6 @@ mod locator;
 mod rule;
 mod semantic;
 mod utility;
-pub mod utils;
 
 pub mod rules;
 

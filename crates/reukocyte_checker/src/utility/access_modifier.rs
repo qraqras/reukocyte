@@ -41,7 +41,7 @@ pub fn is_adjacent_def_modifier(node: &CallNode, _checker: &Checker) -> bool {
 }
 
 fn in_macro_scope(node_id: &NodeId, checker: &Checker) -> bool {
-    let mut ancestors_iter = checker.semantic().ancestors_of(*node_id).peekable();
+    let mut ancestors_iter = checker.semantic().nodes().ancestors(*node_id).skip(1).peekable();
 
     // If no ancestors, we're at module level
     if ancestors_iter.peek().is_none() {

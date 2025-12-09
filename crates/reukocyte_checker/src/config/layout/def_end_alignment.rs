@@ -6,7 +6,6 @@ pub struct DefEndAlignmentConfig {
     pub enforced_style_align_with: EnforcedStyleAlignWith,
     pub severity: Severity,
 }
-
 impl Default for DefEndAlignmentConfig {
     fn default() -> Self {
         Self {
