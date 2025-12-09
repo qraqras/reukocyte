@@ -52,11 +52,15 @@ pub fn is_adjacent_def_modifier(node: &CallNode, _checker: &Checker) -> bool {
 }
 
 fn in_macro_scope(checker: &Checker) -> bool {
-    if checker.ancestors().is_empty() {
+    let mut ancestors_iter = checker.semantic().ancestors().peekable();
+
+    // If no ancestors, we're at module level
+    if ancestors_iter.peek().is_none() {
         return true;
     }
+
     let mut in_statements = false;
-    for ancestor in checker.ancestors().iter().rev() {
+    for ancestor in ancestors_iter {
         match ancestor {
             Node::ClassNode { .. } => return true,
             Node::ModuleNode { .. } => return true,

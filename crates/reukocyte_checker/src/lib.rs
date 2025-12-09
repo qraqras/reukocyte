@@ -7,6 +7,7 @@ mod diagnostic;
 mod fix;
 mod locator;
 mod rule;
+mod semantic;
 mod utility;
 pub mod utils;
 
