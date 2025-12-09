@@ -4,15 +4,15 @@ class Test
   end
   private def bbbb
     puts "b"
-          end
+  end
 end
 
 class Test
-def a;end
-    def b;end
+  def a;end
+  def b;end
 end
 
 def xxxxx
-    puts 1
-puts 2
+  puts 1
+  puts 2
 end

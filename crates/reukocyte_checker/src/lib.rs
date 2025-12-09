@@ -39,10 +39,13 @@ pub fn check_with_config(source: &[u8], config: &Config) -> Vec<Diagnostic> {
     let parse_result = ruby_prism::parse(source);
     let mut checker = Checker::new(source, config);
 
-    // Run AST-based rules (single traversal)
+    // Phase 1: Build node index (pre-index all nodes before rules run)
+    checker.build_index(&parse_result.node());
+
+    // Phase 2: Run AST-based rules (single traversal)
     checker.visit(&parse_result.node());
 
-    // Run line-based rules (after AST, can use collected info)
+    // Phase 3: Run line-based rules (after AST, can use collected info)
     rules::layout::trailing_whitespace::check(&mut checker);
     rules::layout::trailing_empty_lines::check(&mut checker);
     rules::layout::leading_empty_lines::check(&mut checker);

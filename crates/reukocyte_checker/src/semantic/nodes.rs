@@ -2,8 +2,15 @@
 //!
 //! Provides `NodeId` for identifying nodes and `Nodes` for storing all visited
 //! nodes with their parent relationships.
+//!
+//! ## Pre-indexing
+//!
+//! Unlike the original design where nodes are registered during rule traversal,
+//! this module now supports pre-indexing: all nodes are indexed before rules run,
+//! enabling `Node -> NodeId` lookups via `offset_to_id`.
 
 use ruby_prism::Node;
+use rustc_hash::FxHashMap;
 use std::num::NonZeroU32;
 
 /// A unique identifier for an AST node within a file.
@@ -45,9 +52,16 @@ struct NodeWithParent<'a> {
 ///
 /// Nodes are inserted during AST traversal, and parent relationships are
 /// automatically tracked based on the traversal order.
+///
+/// ## Offset-based lookup
+///
+/// The `offset_to_id` map enables reverse lookups from a node's start offset
+/// to its `NodeId`. This is populated during pre-indexing before rules run.
 #[derive(Debug)]
 pub struct Nodes<'a> {
     nodes: Vec<NodeWithParent<'a>>,
+    /// Map from node start offset to NodeId for reverse lookups.
+    offset_to_id: FxHashMap<usize, NodeId>,
 }
 
 impl<'a> Nodes<'a> {
@@ -56,6 +70,7 @@ impl<'a> Nodes<'a> {
     pub fn new() -> Self {
         Self {
             nodes: Vec::with_capacity(256), // Typical file has many nodes
+            offset_to_id: FxHashMap::default(),
         }
     }
 
@@ -66,9 +81,24 @@ impl<'a> Nodes<'a> {
     /// * `parent` - The ID of the parent node, if any
     #[inline]
     pub fn insert(&mut self, node: Node<'a>, parent: Option<NodeId>) -> NodeId {
+        let offset = node.location().start_offset();
         let id = NodeId::new(self.nodes.len());
         self.nodes.push(NodeWithParent { node, parent });
+        self.offset_to_id.insert(offset, id);
         id
+    }
+
+    /// Look up a NodeId by the node's start offset.
+    ///
+    /// # Note
+    ///
+    /// Multiple nodes may share the same `start_offset` (e.g., `StatementsNode` and its first child).
+    /// In such cases, this method returns the NodeId of the node that was indexed last (i.e., the
+    /// innermost node in the AST). This behavior is acceptable for scope checking purposes because
+    /// parent chain traversal works correctly regardless of which node is returned.
+    #[inline]
+    pub fn node_id_for_offset(&self, offset: usize) -> Option<NodeId> {
+        self.offset_to_id.get(&offset).copied()
     }
 
     /// Get the parent ID of a node.

@@ -2,6 +2,11 @@
 //!
 //! The `SemanticModel` tracks the current position in the AST during traversal
 //! and provides efficient access to parent and ancestor nodes.
+//!
+//! ## Pre-indexing
+//!
+//! Before rules run, all nodes are pre-indexed via `build_index()`. This enables
+//! `node_id_for()` to look up the NodeId for any node by its start offset.
 
 use ruby_prism::Node;
 
@@ -204,6 +209,36 @@ impl<'a> SemanticModel<'a> {
     #[inline]
     pub fn ancestor_id_of(&self, node_id: NodeId, n: usize) -> Option<NodeId> {
         self.nodes.ancestor_ids(node_id).nth(n + 1)
+    }
+
+    // ========== Offset-based lookup ==========
+
+    /// Get the NodeId for a node by its start offset.
+    ///
+    /// This requires the node to have been pre-indexed during the indexing phase.
+    ///
+    /// # Note
+    ///
+    /// Multiple nodes may share the same `start_offset` (e.g., `StatementsNode` and its first child).
+    /// In such cases, this method returns the NodeId of the innermost node.
+    /// See [`Nodes::node_id_for_offset`] for more details.
+    #[inline]
+    pub fn node_id_for_offset(&self, offset: usize) -> Option<NodeId> {
+        self.nodes.node_id_for_offset(offset)
+    }
+
+    /// Get the NodeId for a node.
+    ///
+    /// This requires the node to have been pre-indexed during the indexing phase.
+    ///
+    /// # Note
+    ///
+    /// Multiple nodes may share the same `start_offset` (e.g., `StatementsNode` and its first child).
+    /// In such cases, this method returns the NodeId of the innermost node.
+    /// See [`Nodes::node_id_for_offset`] for more details.
+    #[inline]
+    pub fn node_id_for(&self, node: &Node<'_>) -> Option<NodeId> {
+        self.nodes.node_id_for_offset(node.location().start_offset())
     }
 
     // ========== Internal access ==========

@@ -30,7 +30,8 @@ fn check_normal_style(node: &StatementsNode, checker: &mut Checker) {
         .body()
         .iter()
         .filter_map(|child| {
-            if !is_bare_access_modifier(&child, checker) {
+            let node_id = checker.semantic().node_id_for(&child)?;
+            if !is_bare_access_modifier(&node_id, checker) {
                 Some(child.location())
             } else {
                 None
@@ -44,7 +45,10 @@ fn check_normal_style(node: &StatementsNode, checker: &mut Checker) {
 fn check_indented_internal_methods_style(node: &StatementsNode, checker: &mut Checker) {
     let mut children_to_check = Vec::new();
     for statement in node.body().iter() {
-        if is_bare_access_modifier(&statement, checker) {
+        let Some(node_id) = checker.semantic().node_id_for(&statement) else {
+            continue;
+        };
+        if is_bare_access_modifier(&node_id, checker) {
             children_to_check.push(Vec::new());
         } else {
             if let Some(last_group) = children_to_check.last_mut() {
@@ -61,7 +65,8 @@ fn check_indented_internal_methods_style(node: &StatementsNode, checker: &mut Ch
 fn base_column_for_normal_style(node: &StatementsNode, checker: &mut Checker) -> Option<usize> {
     let first_child = node.body().iter().next();
     if let Some(first_child) = first_child
-        && is_bare_access_modifier(&first_child, checker)
+        && let Some(node_id) = checker.semantic().node_id_for(&first_child)
+        && is_bare_access_modifier(&node_id, checker)
     {
         let access_modifier_indent = checker.line_index().column_number(first_child.location().start_offset());
         // If the StatementsNode is inside a module/class, ensure access modifier is more indented

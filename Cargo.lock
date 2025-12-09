@@ -358,6 +358,7 @@ dependencies = [
  "regex",
  "reukocyte_macros",
  "ruby-prism",
+ "rustc-hash",
 ]
 
 [[package]]

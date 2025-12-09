@@ -21,6 +21,30 @@ pub struct Checker<'rk> {
     /// Semantic model for tracking AST node relationships.
     semantic: SemanticModel<'rk>,
 }
+
+/// A visitor that builds the node index before rules run.
+struct IndexingVisitor<'rk, 'checker> {
+    semantic: &'checker mut SemanticModel<'rk>,
+}
+
+impl<'rk> Visit<'rk> for IndexingVisitor<'rk, '_> {
+    fn visit_branch_node_enter(&mut self, node: Node<'rk>) {
+        self.semantic.push_node(node);
+    }
+
+    fn visit_branch_node_leave(&mut self) {
+        self.semantic.pop_node();
+    }
+
+    fn visit_leaf_node_enter(&mut self, node: Node<'rk>) {
+        self.semantic.push_node(node);
+    }
+
+    fn visit_leaf_node_leave(&mut self) {
+        self.semantic.pop_node();
+    }
+}
+
 impl<'rk> Checker<'rk> {
     pub fn new(source: &'rk [u8], config: &'rk Config) -> Self {
         Self {
@@ -31,6 +55,15 @@ impl<'rk> Checker<'rk> {
             ignored_nodes: HashSet::new(),
             semantic: SemanticModel::new(),
         }
+    }
+
+    /// Build the node index by visiting all nodes before rules run.
+    ///
+    /// This pre-populates the semantic model with all nodes, enabling
+    /// `node_id_for()` lookups from any node.
+    pub fn build_index(&mut self, root: &Node<'rk>) {
+        let mut visitor = IndexingVisitor { semantic: &mut self.semantic };
+        visitor.visit(root);
     }
 
     pub fn source(&self) -> &[u8] {

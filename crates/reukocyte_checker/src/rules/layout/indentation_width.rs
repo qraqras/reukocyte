@@ -294,7 +294,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
     let body = statements.body();
 
     if let Some(first) = body.iter().next() {
-        if is_access_modifier(&first, checker) {
+        let is_modifier = checker.semantic().node_id_for(&first).is_some_and(|id| is_access_modifier(&id, checker));
+        if is_modifier {
             match checker.config().layout.access_modifier_indentation.enforced_style {
                 AccessModifierEnforcedStyle::Indent => check_indentation(base_loc, &first, checker, EnforcedStyle::Normal),
                 AccessModifierEnforcedStyle::Outdent => {}
@@ -312,7 +313,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
         EnforcedStyle::Normal => {
             // Skip the first member (already checked above)
             for member in body.iter().skip(1) {
-                if is_access_modifier(&member, checker) {
+                let is_modifier = checker.semantic().node_id_for(&member).is_some_and(|id| is_access_modifier(&id, checker));
+                if is_modifier {
                     continue;
                 }
                 check_indentation(base_loc, &member, checker, EnforcedStyle::Normal);
@@ -321,7 +323,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
         EnforcedStyle::IndentedInternalMethods => {
             let mut previous_modifier: Option<Location> = None;
             for member in body.iter() {
-                if is_special_modifier(&member, checker) {
+                let is_special = checker.semantic().node_id_for(&member).is_some_and(|id| is_special_modifier(&id, checker));
+                if is_special {
                     previous_modifier = Some(member.location());
                 } else if let Some(modifier_loc) = previous_modifier.take() {
                     check_indentation(&modifier_loc, &member, checker, EnforcedStyle::IndentedInternalMethods);
@@ -350,10 +353,11 @@ fn should_check(_base_loc: &Location, node: &Node, checker: &Checker) -> bool {
 /// Check if the body starts with an access modifier (private, protected, public).
 fn starts_with_access_modifier(statements: &StatementsNode, checker: &Checker) -> bool {
     if let Some(first) = statements.body().iter().next() {
-        is_bare_access_modifier(&first, checker)
-    } else {
-        false
+        if let Some(node_id) = checker.semantic().node_id_for(&first) {
+            return is_bare_access_modifier(&node_id, checker);
+        }
     }
+    false
 }
 
 #[cfg(test)]

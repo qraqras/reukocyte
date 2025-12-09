@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 ruby-prism.workspace = true
 reukocyte_macros = { path = "../reukocyte_macros" }
+rustc-hash = "2.1.1"
 
 [build-dependencies]
 regex = "1"
