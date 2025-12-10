@@ -1,8 +1,3 @@
-//! Build script for automatic rule registry generation.
-//!
-//! This script scans all rule files in `src/rules/` and generates macros
-//! that dispatch rules for each node type, enabling static dispatch.
-
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -314,7 +309,11 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
                 // Generate enabled check and include/exclude check before calling the rule
                 writeln!(file, "        {{").unwrap();
                 writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
-                writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{").unwrap();
+                writeln!(
+                    file,
+                    "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{"
+                )
+                .unwrap();
                 writeln!(
                     file,
                     "                <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",

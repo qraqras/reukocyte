@@ -35,7 +35,6 @@ pub struct BaseCopConfig {
     #[serde(default)]
     pub include: Vec<String>,
 }
-
 impl Default for BaseCopConfig {
     fn default() -> Self {
         Self {
