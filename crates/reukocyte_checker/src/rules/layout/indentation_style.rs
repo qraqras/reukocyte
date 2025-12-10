@@ -27,10 +27,14 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::IndentationStyle);
 /// Check for tab indentation (default: spaces preferred).
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.indentation_style;
-    if !config.enabled {
+    if !config.base.enabled {
         return;
     }
-    let severity = config.severity;
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
 
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end, replacement) in edit_ranges {

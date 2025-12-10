@@ -1,23 +1,36 @@
-use crate::config::serde_helpers::{deserialize_enabled, deserialize_severity};
-use crate::diagnostic::Severity;
+use crate::config::BaseCopConfig;
 use serde::Deserialize;
 
 /// Configuration for Layout/TrailingWhitespace.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct TrailingWhitespace {
-    /// Whether this cop is enabled.
-    #[serde(deserialize_with = "deserialize_enabled")]
-    pub enabled: bool,
-    /// Severity level for this cop.
-    #[serde(deserialize_with = "deserialize_severity")]
-    pub severity: Severity,
+    /// Base configuration (enabled, severity, exclude, include).
+    #[serde(flatten)]
+    pub base: BaseCopConfig,
 }
+
 impl Default for TrailingWhitespace {
     fn default() -> Self {
         Self {
-            enabled: true,
-            severity: Severity::Convention,
+            base: BaseCopConfig::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exclude_parsing() {
+        let yaml = r#"
+Exclude:
+  - "test.rb"
+  - "vendor/**/*"
+"#;
+        let config: TrailingWhitespace = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.base.exclude.len(), 2);
+        assert_eq!(config.base.exclude[0], "test.rb");
     }
 }

@@ -142,7 +142,7 @@ Layout/EndAlignment:
         let merged = merge_configs(parent, child);
 
         // Enabled should still be true
-        assert!(merged.end_alignment.enabled);
+        assert!(merged.end_alignment.base.enabled);
 
         // EnforcedStyleAlignWith should come from child
         assert_eq!(merged.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
@@ -178,6 +178,6 @@ Layout/EndAlignment:
   Enabled: false
 "#;
         let config = parse_rubocop_yaml(yaml).unwrap();
-        assert!(!config.end_alignment.enabled);
+        assert!(!config.end_alignment.base.enabled);
     }
 }

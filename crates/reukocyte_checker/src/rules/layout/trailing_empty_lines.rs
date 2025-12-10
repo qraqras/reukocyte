@@ -40,10 +40,14 @@ pub enum EnforcedStyle {
 /// Check for trailing empty lines in the source.
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.trailing_empty_lines;
-    if !config.enabled {
+    if !config.base.enabled {
         return;
     }
-    let severity = config.severity;
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
 
     // Convert config style to local enum
     let style = match config.enforced_style {

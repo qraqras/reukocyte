@@ -12,10 +12,14 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
 /// Directly pushes diagnostics to the Checker (Ruff-style).
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.trailing_whitespace;
-    if !config.enabled {
+    if !config.base.enabled {
         return;
     }
-    let severity = config.severity;
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
 
     // Collect edit ranges first, then report them
     let edit_ranges = collect_edit_ranges(checker.source());

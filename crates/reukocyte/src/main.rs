@@ -12,7 +12,7 @@ use reukocyte_checker::Config;
 use reukocyte_checker::Diagnostic;
 use reukocyte_checker::Severity;
 use reukocyte_checker::apply_fixes_filtered;
-use reukocyte_checker::check_with_config;
+use reukocyte_checker::check_with_config_and_path;
 use reukocyte_checker::load_rubocop_yaml;
 use rustc_hash::FxHashMap;
 use std::io::Read;
@@ -62,6 +62,9 @@ fn load_config(args: &Args) -> Config {
     } else {
         // Try to find .rubocop.yml in current directory
         let default_path = std::path::Path::new(".rubocop.yml");
+        if args.debug {
+            eprintln!("Checking for .rubocop.yml at: {:?}, exists: {}", default_path, default_path.exists());
+        }
         if default_path.exists() {
             match load_rubocop_yaml(default_path) {
                 Ok(yaml) => {
@@ -70,7 +73,12 @@ fn load_config(args: &Args) -> Config {
                     }
                     Config::from_rubocop_yaml(&yaml)
                 }
-                Err(_) => Config::default(),
+                Err(e) => {
+                    if args.debug {
+                        eprintln!("Failed to load .rubocop.yml: {}", e);
+                    }
+                    Config::default()
+                }
             }
         } else {
             Config::default()
@@ -199,7 +207,7 @@ fn filter_diagnostics(diagnostics: Vec<Diagnostic>, args: &Args) -> Vec<Diagnost
 
 /// Check a file and return (remaining_diagnostics, fixed_count).
 fn check_file(path: &str, source: &[u8], args: &Args, config: &Config) -> (Vec<Diagnostic>, usize) {
-    let diagnostics = check_with_config(source, config);
+    let diagnostics = check_with_config_and_path(source, config, Some(path));
     let diagnostics = filter_diagnostics(diagnostics, args);
 
     if args.should_fix() && !diagnostics.is_empty() {
@@ -216,7 +224,7 @@ fn check_file(path: &str, source: &[u8], args: &Args, config: &Config) -> (Vec<D
         }
 
         // Get remaining diagnostics (also filtered)
-        let remaining = check_with_config(&fixed_source, config);
+        let remaining = check_with_config_and_path(&fixed_source, config, Some(path));
         let remaining = filter_diagnostics(remaining, args);
         print_diagnostics(path, &remaining, args);
         (remaining, fix_count)

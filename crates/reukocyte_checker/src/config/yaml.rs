@@ -128,7 +128,7 @@ Layout/EndAlignment:
   EnforcedStyleAlignWith: variable
 "#;
         let config: RubocopYaml = serde_yaml::from_str(yaml).unwrap();
-        assert!(config.end_alignment.enabled);
+        assert!(config.end_alignment.base.enabled);
         assert_eq!(config.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
     }
 
@@ -178,7 +178,7 @@ Layout/EndAlignment:
   Enabled: false
 "#;
         let config: RubocopYaml = serde_yaml::from_str(yaml).unwrap();
-        assert!(!config.end_alignment.enabled);
+        assert!(!config.end_alignment.base.enabled);
     }
 
     #[test]
@@ -189,6 +189,6 @@ Layout/EndAlignment:
 "#;
         let config: RubocopYaml = serde_yaml::from_str(yaml).unwrap();
         // "pending" is treated as enabled (not explicitly disabled)
-        assert!(config.end_alignment.enabled);
+        assert!(config.end_alignment.base.enabled);
     }
 }

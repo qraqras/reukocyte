@@ -36,10 +36,10 @@ fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::lint::debugger::De
 impl Check<CallNode<'_>> for Debugger {
     fn check(node: &CallNode, checker: &mut Checker) {
         let cfg = config(checker);
-        if !cfg.enabled {
+        if !cfg.base.enabled {
             return;
         }
-        let severity = cfg.severity;
+        let severity = cfg.base.severity;
 
         let method_name = node.name().as_slice();
         let location = node.location();

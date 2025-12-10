@@ -81,7 +81,7 @@ fn check_end_kw_alignment(node: &DefNode, def: usize, start_of_line: usize, chec
         checker.report(
             DefEndAlignment::ID,
             format!("`end` keyword should be aligned with its opening keyword."),
-            cfg.severity,
+            cfg.base.severity,
             end_keyword_loc.start_offset(),
             end_keyword_loc.end_offset(),
             Some(fix),

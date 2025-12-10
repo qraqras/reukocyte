@@ -32,7 +32,14 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::EmptyLines);
 /// Check for consecutive empty lines in the source.
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.empty_lines;
-    let severity = config.severity;
+    if !config.base.enabled {
+        return;
+    }
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
 
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end, message) in edit_ranges {

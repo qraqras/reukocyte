@@ -77,7 +77,7 @@ fn check_end_kw_alignment(node: &BeginNode, checker: &mut Checker) {
         checker.report(
             BeginEndAlignment::ID,
             format!("`end` keyword should be aligned with its opening keyword."),
-            cfg.severity,
+            cfg.base.severity,
             end_keyword_loc.start_offset(),
             end_keyword_loc.end_offset(),
             Some(fix),

@@ -1,9 +1,12 @@
+mod base;
 pub mod layout;
 pub mod lint;
 mod loader;
 mod macros;
 pub(crate) mod serde_helpers;
 mod yaml;
+
+pub use base::BaseCopConfig;
 
 pub use layout::*;
 pub use loader::{LoadError, load_rubocop_yaml, parse_rubocop_yaml};

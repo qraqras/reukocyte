@@ -1,23 +1,19 @@
-use crate::config::serde_helpers::{deserialize_enabled, deserialize_severity};
-use crate::diagnostic::Severity;
+use crate::config::BaseCopConfig;
 use serde::Deserialize;
 
 /// Configuration for Layout/EmptyLines.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct EmptyLines {
-    /// Whether this cop is enabled.
-    #[serde(deserialize_with = "deserialize_enabled")]
-    pub enabled: bool,
-    /// Severity level for this cop.
-    #[serde(deserialize_with = "deserialize_severity")]
-    pub severity: Severity,
+    /// Base configuration (enabled, severity, exclude, include).
+    #[serde(flatten)]
+    pub base: BaseCopConfig,
 }
+
 impl Default for EmptyLines {
     fn default() -> Self {
         Self {
-            enabled: true,
-            severity: Severity::Convention,
+            base: BaseCopConfig::default(),
         }
     }
 }

@@ -12,6 +12,7 @@ reukocyte_macros = { path = "../reukocyte_macros" }
 rustc-hash = "2.1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+globset = "0.4"
 
 [build-dependencies]
 regex = "1"

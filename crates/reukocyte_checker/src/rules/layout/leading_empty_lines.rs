@@ -26,10 +26,14 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::LeadingEmptyLines);
 /// Check for leading empty lines in the source.
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.leading_empty_lines;
-    if !config.enabled {
+    if !config.base.enabled {
         return;
     }
-    let severity = config.severity;
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
 
     if let Some((end, message)) = analyze(checker.source()) {
         let fix = Fix::safe(vec![Edit::deletion(0, end)]);

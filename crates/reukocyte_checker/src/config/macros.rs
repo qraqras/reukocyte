@@ -90,10 +90,10 @@ macro_rules! define_cops {
             /// Merge a cop config: use child if it has explicit overrides.
             macro_rules! merge_cop {
                 ($parent:expr, $child:expr, $default:expr) => {{
-                    if !$child.enabled && $default.enabled {
+                    if !$child.base.enabled && $default.base.enabled {
                         $child
-                    } else if $child.enabled != $default.enabled
-                        || $child.severity != $default.severity
+                    } else if $child.base.enabled != $default.base.enabled
+                        || $child.base.severity != $default.base.severity
                     {
                         $child
                     } else {

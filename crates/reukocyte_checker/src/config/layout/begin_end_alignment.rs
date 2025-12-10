@@ -1,4 +1,4 @@
-use crate::config::serde_helpers::{deserialize_enabled, deserialize_severity};
+use crate::config::BaseCopConfig;
 use crate::diagnostic::Severity;
 use serde::Deserialize;
 
@@ -6,19 +6,16 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct BeginEndAlignment {
-    /// Whether this cop is enabled.
-    #[serde(deserialize_with = "deserialize_enabled")]
-    pub enabled: bool,
-    /// Severity level for this cop.
-    #[serde(deserialize_with = "deserialize_severity")]
-    pub severity: Severity,
+    /// Base configuration (enabled, severity, exclude, include).
+    #[serde(flatten)]
+    pub base: BaseCopConfig,
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
+
 impl Default for BeginEndAlignment {
     fn default() -> Self {
         Self {
-            enabled: true,
-            severity: Severity::Warning,
+            base: BaseCopConfig::with_severity(Severity::Warning),
             enforced_style_align_with: EnforcedStyleAlignWith::default(),
         }
     }

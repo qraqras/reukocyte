@@ -149,33 +149,6 @@ pub trait Check<N>: Rule {
     fn check(node: &N, checker: &mut Checker);
 }
 
-// ============================================================================
-// Rule Runner Macro
-// ============================================================================
-
-/// Macro to run multiple rules for a specific node type.
-///
-/// This macro generates static dispatch calls for each rule, avoiding
-/// the overhead of dynamic dispatch (trait objects).
-///
-/// # Example
-/// ```ignore
-/// run_rules!(node, checker, StatementsNode, [
-///     EndAlignment,
-///     IndentationWidth,
-/// ]);
-/// ```
-#[macro_export]
-macro_rules! run_rules {
-    ($node:expr, $checker:expr, $node_type:ty, [$($rule:ty),* $(,)?]) => {
-        $(
-            if $checker.is_enabled(<$rule as $crate::rule::Rule>::ID) {
-                <$rule as $crate::rule::Check<$node_type>>::check($node, $checker);
-            }
-        )*
-    };
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

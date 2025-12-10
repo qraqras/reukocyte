@@ -38,8 +38,23 @@ pub fn check(source: &[u8]) -> Vec<Diagnostic> {
 
 /// Check a Ruby source file for violations with custom configuration.
 pub fn check_with_config(source: &[u8], config: &Config) -> Vec<Diagnostic> {
+    check_with_config_and_path(source, config, None)
+}
+
+/// Check a Ruby source file for violations with custom configuration and file path.
+///
+/// The file path is used for cop-specific Exclude pattern matching.
+pub fn check_with_config_and_path(
+    source: &[u8],
+    config: &Config,
+    file_path: Option<&str>,
+) -> Vec<Diagnostic> {
     let parse_result = ruby_prism::parse(source);
-    let mut checker = Checker::new(source, config);
+    let mut checker = if let Some(path) = file_path {
+        Checker::with_file_path(source, config, path)
+    } else {
+        Checker::new(source, config)
+    };
 
     // Phase 1: Build node index (pre-index all nodes before rules run)
     checker.build_index(&parse_result.node());

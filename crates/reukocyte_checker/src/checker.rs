@@ -37,6 +37,7 @@ impl<'rk> Visit<'rk> for IndexingVisitor<'rk, '_> {
 pub struct Checker<'rk> {
     source: &'rk [u8],
     config: &'rk Config,
+    file_path: Option<&'rk str>,
     ignored_nodes: FxHashSet<(usize, usize)>,
     line_index: LineIndex<'rk>,
     raw_diagnostics: Vec<RawDiagnostic>,
@@ -48,6 +49,20 @@ impl<'rk> Checker<'rk> {
         Self {
             source,
             config,
+            file_path: None,
+            ignored_nodes: FxHashSet::default(),
+            line_index: LineIndex::from_source(source),
+            raw_diagnostics: Vec::new(),
+            semantic: SemanticModel::new(),
+        }
+    }
+
+    /// Create a new Checker instance with a file path.
+    pub fn with_file_path(source: &'rk [u8], config: &'rk Config, file_path: &'rk str) -> Self {
+        Self {
+            source,
+            config,
+            file_path: Some(file_path),
             ignored_nodes: FxHashSet::default(),
             line_index: LineIndex::from_source(source),
             raw_diagnostics: Vec::new(),
@@ -78,6 +93,75 @@ impl<'rk> Checker<'rk> {
     #[inline]
     pub fn semantic(&self) -> &SemanticModel<'rk> {
         &self.semantic
+    }
+
+    /// Check if the current file matches any of the given glob patterns.
+    ///
+    /// Returns `Some(true)` if the file matches, `Some(false)` if it doesn't match,
+    /// or `None` if matching cannot be performed (no file path, no patterns, or build error).
+    fn matches_patterns(&self, patterns: &[String]) -> Option<bool> {
+        if patterns.is_empty() {
+            return None;
+        }
+        let file_path = self.file_path?;
+
+        // Build glob matcher
+        use globset::{Glob, GlobSetBuilder};
+        let mut builder = GlobSetBuilder::new();
+        for pattern in patterns {
+            if let Ok(glob) = Glob::new(pattern) {
+                builder.add(glob);
+            }
+        }
+        let glob_set = builder.build().ok()?;
+
+        // Try matching with different path forms
+        let path = std::path::Path::new(file_path);
+        if glob_set.is_match(path) {
+            return Some(true);
+        }
+        // Try without "./" prefix
+        if let Some(stripped) = file_path.strip_prefix("./") {
+            if glob_set.is_match(std::path::Path::new(stripped)) {
+                return Some(true);
+            }
+        }
+        // Try matching just the filename
+        if let Some(filename) = path.file_name() {
+            if glob_set.is_match(std::path::Path::new(filename)) {
+                return Some(true);
+            }
+        }
+        Some(false)
+    }
+
+    /// Check if the current file is excluded by the given exclude patterns.
+    ///
+    /// Returns `true` if the file matches any of the exclude patterns.
+    #[inline]
+    pub fn is_file_excluded(&self, exclude_patterns: &[String]) -> bool {
+        // If no patterns or can't match, don't exclude (safe default: run the cop)
+        self.matches_patterns(exclude_patterns).unwrap_or(false)
+    }
+
+    /// Check if the current file is included by the given include patterns.
+    ///
+    /// Returns `true` if include patterns are empty (no restriction) or if the file matches any pattern.
+    /// Returns `false` if include patterns are specified but the file doesn't match any.
+    #[inline]
+    pub fn is_file_included(&self, include_patterns: &[String]) -> bool {
+        // If no patterns or can't match, include by default (safe default: run the cop)
+        self.matches_patterns(include_patterns).unwrap_or(true)
+    }
+
+    /// Check if a cop should run on the current file based on include/exclude patterns.
+    ///
+    /// A cop should run if:
+    /// 1. The file is included (matches include patterns, or no include patterns specified)
+    /// 2. The file is NOT excluded (doesn't match any exclude patterns)
+    #[inline]
+    pub fn should_run_cop(&self, include_patterns: &[String], exclude_patterns: &[String]) -> bool {
+        self.is_file_included(include_patterns) && !self.is_file_excluded(exclude_patterns)
     }
 
     // ========= Node stack management ==========

@@ -278,7 +278,7 @@ fn check_indentation(base_loc: &Location, node: &Node, checker: &mut Checker, st
             indentation,
             style.as_str()
         ),
-        config(checker).severity,
+        config(checker).base.severity,
         report_start,
         report_end,
         fix,

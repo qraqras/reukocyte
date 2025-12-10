@@ -214,7 +214,7 @@ fn check_end_kw_alignment(loc: &Location, end_loc: &Location, keyword_loc: &Loca
     checker.report(
         EndAlignment::ID,
         format!("`end` keyword should be aligned with its opening keyword."),
-        config(checker).severity,
+        config(checker).base.severity,
         end_loc.start_offset(),
         end_loc.end_offset(),
         Some(fix),

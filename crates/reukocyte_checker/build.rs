@@ -311,14 +311,17 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
             for rule in rules {
                 let full_path = format!("crate::rules::{}::{}", rule.module, rule.name);
                 let config_path = rule.config_path();
-                // Generate enabled check before calling the rule
-                writeln!(file, "        if $checker.config().{}.enabled {{", config_path).unwrap();
+                // Generate enabled check and include/exclude check before calling the rule
+                writeln!(file, "        {{").unwrap();
+                writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
+                writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{").unwrap();
                 writeln!(
                     file,
-                    "            <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
+                    "                <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
                     full_path, type_path
                 )
                 .unwrap();
+                writeln!(file, "            }}").unwrap();
                 writeln!(file, "        }}").unwrap();
             }
         }

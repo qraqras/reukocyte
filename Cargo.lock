@@ -383,6 +383,7 @@ dependencies = [
 name = "reukocyte_checker"
 version = "0.0.1"
 dependencies = [
+ "globset",
  "regex",
  "reukocyte_macros",
  "ruby-prism",
