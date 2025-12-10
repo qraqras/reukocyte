@@ -23,7 +23,7 @@ pub struct Metadata {
 impl Default for Metadata {
     fn default() -> Self {
         Self {
-            rubocop_version: format!("rueko {}", env!("CARGO_PKG_VERSION")),
+            rubocop_version: format!("reuko {}", env!("CARGO_PKG_VERSION")),
             ruby_engine: "ruby".to_string(),
             ruby_version: "3.0.0".to_string(), // Placeholder
             ruby_patchlevel: "0".to_string(),

@@ -1,10 +1,10 @@
 #!/bin/bash
 # RuboCop compatibility test script
-# Compares rueko output with RuboCop output to verify compatibility
+# Compares reuko output with RuboCop output to verify compatibility
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-RUEKO="$PROJECT_ROOT/target/debug/rueko"
+RUEKO="$PROJECT_ROOT/target/debug/reuko"
 TESTDATA="$PROJECT_ROOT/testdata"
 TMP_DIR=$(mktemp -d)
 
@@ -24,8 +24,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Build rueko if needed
-echo "Building rueko..."
+# Build reuko if needed
+echo "Building reuko..."
 cargo build -p reukocyte --quiet
 
 echo ""
@@ -44,19 +44,19 @@ test_json_format() {
     # Get RuboCop JSON output
     local rubocop_json=$(rubocop -f json "$test_file" 2>/dev/null || true)
 
-    # Get rueko JSON output
-    local rueko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
+    # Get reuko JSON output
+    local reuko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
 
     # Check that both have required fields
-    if echo "$rueko_json" | grep -q '"metadata"' && \
-       echo "$rueko_json" | grep -q '"files"' && \
-       echo "$rueko_json" | grep -q '"summary"' && \
-       echo "$rueko_json" | grep -q '"offenses"'; then
+    if echo "$reuko_json" | grep -q '"metadata"' && \
+       echo "$reuko_json" | grep -q '"files"' && \
+       echo "$reuko_json" | grep -q '"summary"' && \
+       echo "$reuko_json" | grep -q '"offenses"'; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
     else
         echo -e "${RED}FAILED${NC}"
-        echo "  rueko JSON missing required fields"
+        echo "  reuko JSON missing required fields"
         ((FAILED++))
     fi
 }
@@ -71,15 +71,15 @@ test_trailing_whitespace() {
     # Count RuboCop offenses
     local rubocop_count=$(rubocop --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Layout/TrailingWhitespace"' | wc -l)
 
-    # Count rueko offenses
-    local rueko_count=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Layout/TrailingWhitespace"' | wc -l)
+    # Count reuko offenses
+    local reuko_count=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Layout/TrailingWhitespace"' | wc -l)
 
-    if [ "$rubocop_count" = "$rueko_count" ]; then
+    if [ "$rubocop_count" = "$reuko_count" ]; then
         echo -e "${GREEN}PASSED${NC} (both found $rubocop_count offense(s))"
         ((PASSED++))
     else
         echo -e "${RED}FAILED${NC}"
-        echo "  RuboCop found: $rubocop_count, rueko found: $rueko_count"
+        echo "  RuboCop found: $rubocop_count, reuko found: $reuko_count"
         ((FAILED++))
     fi
 }
@@ -89,24 +89,24 @@ test_trailing_whitespace_fix() {
     echo -n "Test: Layout/TrailingWhitespace autocorrect... "
 
     local rubocop_file="$TMP_DIR/test_tw_rubocop.rb"
-    local rueko_file="$TMP_DIR/test_tw_rueko.rb"
+    local reuko_file="$TMP_DIR/test_tw_reuko.rb"
     printf 'x = 1  \ny = 2\nz = 3   \n' > "$rubocop_file"
-    printf 'x = 1  \ny = 2\nz = 3   \n' > "$rueko_file"
+    printf 'x = 1  \ny = 2\nz = 3   \n' > "$reuko_file"
 
     # Fix with RuboCop
     rubocop -a --only Layout/TrailingWhitespace "$rubocop_file" >/dev/null 2>&1 || true
 
-    # Fix with rueko
-    "$RUEKO" -a --only Layout/TrailingWhitespace "$rueko_file" >/dev/null 2>&1 || true
+    # Fix with reuko
+    "$RUEKO" -a --only Layout/TrailingWhitespace "$reuko_file" >/dev/null 2>&1 || true
 
     # Compare results
-    if diff -q "$rubocop_file" "$rueko_file" >/dev/null 2>&1; then
+    if diff -q "$rubocop_file" "$reuko_file" >/dev/null 2>&1; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
     else
         echo -e "${RED}FAILED${NC}"
         echo "  Files differ after autocorrect:"
-        diff "$rubocop_file" "$rueko_file" | head -10
+        diff "$rubocop_file" "$reuko_file" | head -10
         ((FAILED++))
     fi
 }
@@ -128,15 +128,15 @@ EOF
     # Count RuboCop offenses
     local rubocop_count=$(rubocop --only Lint/Debugger -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Lint/Debugger"' | wc -l)
 
-    # Count rueko offenses
-    local rueko_count=$("$RUEKO" --only Lint/Debugger -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Lint/Debugger"' | wc -l)
+    # Count reuko offenses
+    local reuko_count=$("$RUEKO" --only Lint/Debugger -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Lint/Debugger"' | wc -l)
 
-    if [ "$rubocop_count" = "$rueko_count" ]; then
+    if [ "$rubocop_count" = "$reuko_count" ]; then
         echo -e "${GREEN}PASSED${NC} (both found $rubocop_count offense(s))"
         ((PASSED++))
     else
         echo -e "${RED}FAILED${NC}"
-        echo "  RuboCop found: $rubocop_count, rueko found: $rueko_count"
+        echo "  RuboCop found: $rubocop_count, reuko found: $reuko_count"
         ((FAILED++))
     fi
 }
@@ -159,15 +159,15 @@ test_file_collection() {
     # Count files RuboCop inspects
     local rubocop_files=$(rubocop -f json "$test_dir" 2>/dev/null | grep -o '"path":' | wc -l)
 
-    # Count files rueko inspects
-    local rueko_files=$("$RUEKO" -f json "$test_dir" 2>/dev/null | grep -o '"path":' | wc -l)
+    # Count files reuko inspects
+    local reuko_files=$("$RUEKO" -f json "$test_dir" 2>/dev/null | grep -o '"path":' | wc -l)
 
-    if [ "$rubocop_files" = "$rueko_files" ]; then
+    if [ "$rubocop_files" = "$reuko_files" ]; then
         echo -e "${GREEN}PASSED${NC} (both inspected $rubocop_files file(s))"
         ((PASSED++))
     else
         echo -e "${YELLOW}PARTIAL${NC}"
-        echo "  RuboCop inspected: $rubocop_files, rueko inspected: $rueko_files"
+        echo "  RuboCop inspected: $rubocop_files, reuko inspected: $reuko_files"
         ((SKIPPED++))
     fi
 }
@@ -179,14 +179,14 @@ test_offense_location() {
     local test_file="$TMP_DIR/test_location.rb"
     echo 'x = 1  ' > "$test_file"
 
-    # Get rueko JSON and check location fields
-    local rueko_json=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null || true)
+    # Get reuko JSON and check location fields
+    local reuko_json=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null || true)
 
-    if echo "$rueko_json" | grep -q '"start_line"' && \
-       echo "$rueko_json" | grep -q '"start_column"' && \
-       echo "$rueko_json" | grep -q '"last_line"' && \
-       echo "$rueko_json" | grep -q '"last_column"' && \
-       echo "$rueko_json" | grep -q '"length"'; then
+    if echo "$reuko_json" | grep -q '"start_line"' && \
+       echo "$reuko_json" | grep -q '"start_column"' && \
+       echo "$reuko_json" | grep -q '"last_line"' && \
+       echo "$reuko_json" | grep -q '"last_column"' && \
+       echo "$reuko_json" | grep -q '"length"'; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
     else
@@ -203,10 +203,10 @@ test_severity_levels() {
     local test_file="$TMP_DIR/test_severity.rb"
     echo 'x = 1  ' > "$test_file"
 
-    local rueko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
+    local reuko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
 
     # Check severity is a valid RuboCop severity
-    if echo "$rueko_json" | grep -qE '"severity":"(info|refactor|convention|warning|error|fatal)"'; then
+    if echo "$reuko_json" | grep -qE '"severity":"(info|refactor|convention|warning|error|fatal)"'; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
     else
@@ -225,18 +225,18 @@ test_empty_file() {
 
     # Both should handle empty files without error
     local rubocop_exit=0
-    local rueko_exit=0
+    local reuko_exit=0
 
     rubocop -f json "$test_file" >/dev/null 2>&1 || rubocop_exit=$?
-    "$RUEKO" -f json "$test_file" >/dev/null 2>&1 || rueko_exit=$?
+    "$RUEKO" -f json "$test_file" >/dev/null 2>&1 || reuko_exit=$?
 
     # Both should succeed (exit 0) for empty files
-    if [ "$rueko_exit" = "0" ]; then
+    if [ "$reuko_exit" = "0" ]; then
         echo -e "${GREEN}PASSED${NC}"
         ((PASSED++))
     else
         echo -e "${RED}FAILED${NC}"
-        echo "  rueko exit code: $rueko_exit (expected 0)"
+        echo "  reuko exit code: $reuko_exit (expected 0)"
         ((FAILED++))
     fi
 }

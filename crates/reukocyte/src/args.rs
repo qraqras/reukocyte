@@ -1,9 +1,9 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-/// Rueko: An extremely fast Ruby linter (Reukocyte)
+/// Reuko: An extremely fast Ruby linter (Reukocyte)
 #[derive(Debug, Parser)]
-#[command(name = "rueko")]
+#[command(name = "reuko")]
 #[command(author, version, about, long_about = None)]
 #[command(after_help = "For more information, see: https://github.com/qraqras/reukocyte")]
 pub struct Args {
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_default_values() {
-        let args = Args::parse_from(["rueko", "."]);
+        let args = Args::parse_from(["reuko", "."]);
         assert!(!args.autocorrect);
         assert!(!args.autocorrect_all);
         assert!(args.only.is_none());
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_autocorrect() {
-        let args = Args::parse_from(["rueko", "-a", "."]);
+        let args = Args::parse_from(["reuko", "-a", "."]);
         assert!(args.autocorrect);
         assert!(args.should_fix());
         assert!(!args.unsafe_fixes());
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_autocorrect_all() {
-        let args = Args::parse_from(["rueko", "-A", "."]);
+        let args = Args::parse_from(["reuko", "-A", "."]);
         assert!(args.autocorrect_all);
         assert!(args.should_fix());
         assert!(args.unsafe_fixes());
@@ -246,37 +246,37 @@ mod tests {
 
     #[test]
     fn test_only_option() {
-        let args = Args::parse_from(["rueko", "--only", "Layout/TrailingWhitespace,Lint/Debugger", "."]);
+        let args = Args::parse_from(["reuko", "--only", "Layout/TrailingWhitespace,Lint/Debugger", "."]);
         assert_eq!(args.only, Some(vec!["Layout/TrailingWhitespace".to_string(), "Lint/Debugger".to_string()]));
     }
 
     #[test]
     fn test_format_json() {
-        let args = Args::parse_from(["rueko", "-f", "json", "."]);
+        let args = Args::parse_from(["reuko", "-f", "json", "."]);
         assert_eq!(args.format, Some(OutputFormat::Json));
     }
 
     #[test]
     fn test_format_short() {
-        let args = Args::parse_from(["rueko", "-f", "j", "."]);
+        let args = Args::parse_from(["reuko", "-f", "j", "."]);
         assert_eq!(args.format, Some(OutputFormat::Json));
     }
 
     #[test]
     fn test_fail_level() {
-        let args = Args::parse_from(["rueko", "--fail-level", "warning", "."]);
+        let args = Args::parse_from(["reuko", "--fail-level", "warning", "."]);
         assert_eq!(args.fail_level, Some(Severity::Warning));
     }
 
     #[test]
     fn test_config_file() {
-        let args = Args::parse_from(["rueko", "-c", ".rubocop.yml", "."]);
+        let args = Args::parse_from(["reuko", "-c", ".rubocop.yml", "."]);
         assert_eq!(args.config, Some(PathBuf::from(".rubocop.yml")));
     }
 
     #[test]
     fn test_fix_layout() {
-        let args = Args::parse_from(["rueko", "-x", "."]);
+        let args = Args::parse_from(["reuko", "-x", "."]);
         assert!(args.fix_layout);
         assert!(args.should_fix());
     }

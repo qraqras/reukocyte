@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "rueko"
+name = "reuko"
 path = "src/main.rs"
 
 [dependencies]
