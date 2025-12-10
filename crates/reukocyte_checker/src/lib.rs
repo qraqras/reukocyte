@@ -13,7 +13,10 @@ mod utility;
 pub mod rules;
 
 pub use checker::Checker;
-pub use config::{Config, LayoutConfig};
+pub use config::{
+    load_rubocop_yaml, parse_rubocop_yaml, AllCopsConfig, Config,
+    InheritFrom, LayoutConfig, LoadError, RubocopYaml,
+};
 pub use conflict::ConflictRegistry;
 pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};

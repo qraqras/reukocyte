@@ -18,7 +18,7 @@
 //! ```
 
 use crate::checker::Checker;
-use crate::diagnostic::{Edit, Fix, Severity};
+use crate::diagnostic::{Edit, Fix};
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/IndentationStyle.
@@ -26,10 +26,16 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::IndentationStyle);
 
 /// Check for tab indentation (default: spaces preferred).
 pub fn check(checker: &mut Checker) {
+    let config = &checker.config().layout.indentation_style;
+    if !config.enabled {
+        return;
+    }
+    let severity = config.severity;
+
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end, replacement) in edit_ranges {
         let fix = Fix::safe(vec![Edit::replacement(start, end, replacement)]);
-        checker.report(RULE_ID, "Tab detected in indentation.".to_string(), Severity::Convention, start, end, Some(fix));
+        checker.report(RULE_ID, "Tab detected in indentation.".to_string(), severity, start, end, Some(fix));
     }
 }
 

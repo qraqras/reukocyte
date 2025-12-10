@@ -1,7 +1,6 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/TrailingWhitespace.
@@ -12,18 +11,17 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
 /// This rule doesn't need AST information - it operates on raw source bytes.
 /// Directly pushes diagnostics to the Checker (Ruff-style).
 pub fn check(checker: &mut Checker) {
+    let config = &checker.config().layout.trailing_whitespace;
+    if !config.enabled {
+        return;
+    }
+    let severity = config.severity;
+
     // Collect edit ranges first, then report them
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end) in edit_ranges {
         let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-        checker.report(
-            RULE_ID,
-            "Trailing whitespace detected.".to_string(),
-            Severity::Convention,
-            start,
-            end,
-            Some(fix),
-        );
+        checker.report(RULE_ID, "Trailing whitespace detected.".to_string(), severity, start, end, Some(fix));
     }
 }
 

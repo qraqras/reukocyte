@@ -18,7 +18,6 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/LeadingEmptyLines.
@@ -26,9 +25,15 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::LeadingEmptyLines);
 
 /// Check for leading empty lines in the source.
 pub fn check(checker: &mut Checker) {
+    let config = &checker.config().layout.leading_empty_lines;
+    if !config.enabled {
+        return;
+    }
+    let severity = config.severity;
+
     if let Some((end, message)) = analyze(checker.source()) {
         let fix = Fix::safe(vec![Edit::deletion(0, end)]);
-        checker.report(RULE_ID, message, Severity::Convention, 0, end, Some(fix));
+        checker.report(RULE_ID, message, severity, 0, end, Some(fix));
     }
 }
 

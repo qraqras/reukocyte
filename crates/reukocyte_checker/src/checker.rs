@@ -80,17 +80,6 @@ impl<'rk> Checker<'rk> {
         &self.semantic
     }
 
-    // ======== Rule management ==========
-
-    /// Check if a rule is enabled.
-    ///
-    /// TODO: Implement rule enable/disable logic based on config.
-    /// For now, all rules are enabled.
-    #[inline]
-    pub fn is_enabled(&self, _rule_id: RuleId) -> bool {
-        true
-    }
-
     // ========= Node stack management ==========
 
     /// Push a node onto the semantic model (called before visiting children).
@@ -123,6 +112,7 @@ impl<'rk> Checker<'rk> {
     // ========= Diagnostic reporting ==========
 
     /// Report a diagnostic (deferred line/column calculation).
+    /// Severity is passed directly from the rule (already resolved from config).
     #[inline]
     pub fn report(&mut self, rule_id: RuleId, message: String, severity: Severity, start_offset: usize, end_offset: usize, fix: Option<Fix>) {
         self.raw_diagnostics.push(RawDiagnostic {

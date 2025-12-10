@@ -9,6 +9,12 @@ use crate::utility::alignment::check_alignment;
 use reukocyte_macros::check;
 use ruby_prism::*;
 
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_consistency::IndentationConsistencyConfig {
+    &checker.config().layout.indentation_consistency
+}
+
 /// Layout/IndentationConsistency rule.
 pub struct IndentationConsistency;
 impl Rule for IndentationConsistency {
@@ -17,7 +23,7 @@ impl Rule for IndentationConsistency {
 #[check(StatementsNode)]
 impl Check<StatementsNode<'_>> for IndentationConsistency {
     fn check(node: &StatementsNode, checker: &mut Checker) {
-        match checker.config().layout.indentation_consistency.enforced_style {
+        match config(checker).enforced_style {
             EnforcedStyle::Normal => check_normal_style(node, checker),
             EnforcedStyle::IndentedInternalMethods => check_indented_internal_methods_style(node, checker),
         }

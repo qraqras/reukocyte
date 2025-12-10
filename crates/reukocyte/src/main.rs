@@ -8,10 +8,12 @@ use clap::Parser;
 use files::collect_ruby_files;
 use output::JsonOutput;
 use reukocyte_checker::Category;
+use reukocyte_checker::Config;
 use reukocyte_checker::Diagnostic;
 use reukocyte_checker::Severity;
 use reukocyte_checker::apply_fixes_filtered;
-use reukocyte_checker::check;
+use reukocyte_checker::check_with_config;
+use reukocyte_checker::load_rubocop_yaml;
 use rustc_hash::FxHashMap;
 use std::io::Read;
 use std::process::ExitCode;
@@ -47,6 +49,37 @@ fn main() -> ExitCode {
     result
 }
 
+/// Load configuration from file or use defaults.
+fn load_config(args: &Args) -> Config {
+    if let Some(ref config_path) = args.config {
+        match load_rubocop_yaml(config_path) {
+            Ok(yaml) => {
+                Config::from_rubocop_yaml(&yaml)
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to load config {}: {}", config_path.display(), e);
+                Config::default()
+            }
+        }
+    } else {
+        // Try to find .rubocop.yml in current directory
+        let default_path = std::path::Path::new(".rubocop.yml");
+        if default_path.exists() {
+            match load_rubocop_yaml(default_path) {
+                Ok(yaml) => {
+                    if args.debug {
+                        eprintln!("Loaded config from: .rubocop.yml");
+                    }
+                    Config::from_rubocop_yaml(&yaml)
+                }
+                Err(_) => Config::default(),
+            }
+        } else {
+            Config::default()
+        }
+    }
+}
+
 /// Handle reading from stdin
 fn handle_stdin(args: &Args, filename: &std::path::Path) -> ExitCode {
     let mut source = Vec::new();
@@ -55,8 +88,9 @@ fn handle_stdin(args: &Args, filename: &std::path::Path) -> ExitCode {
         return ExitCode::from(exit_code::OFFENSES);
     }
 
+    let config = load_config(args);
     let path_str = filename.to_string_lossy();
-    let (remaining, _fixed_count) = check_file(&path_str, &source, args);
+    let (remaining, _fixed_count) = check_file(&path_str, &source, args, &config);
 
     if remaining.is_empty() {
         ExitCode::from(exit_code::SUCCESS)
@@ -67,6 +101,9 @@ fn handle_stdin(args: &Args, filename: &std::path::Path) -> ExitCode {
 
 /// Run the checker on the given files and return appropriate exit code.
 fn run(args: &Args) -> ExitCode {
+    // Load configuration
+    let config = load_config(args);
+
     // Collect all Ruby files from the given paths
     let files = collect_ruby_files(&args.files);
 
@@ -86,7 +123,7 @@ fn run(args: &Args) -> ExitCode {
         match std::fs::read(path) {
             Ok(source) => {
                 let path_str = path.to_string_lossy().to_string();
-                let (remaining, fixed_count) = check_file(&path_str, &source, args);
+                let (remaining, fixed_count) = check_file(&path_str, &source, args, &config);
 
                 total_remaining += remaining.len();
                 total_fixed += fixed_count;
@@ -163,8 +200,8 @@ fn filter_diagnostics(diagnostics: Vec<Diagnostic>, args: &Args) -> Vec<Diagnost
 }
 
 /// Check a file and return (remaining_diagnostics, fixed_count).
-fn check_file(path: &str, source: &[u8], args: &Args) -> (Vec<Diagnostic>, usize) {
-    let diagnostics = check(source);
+fn check_file(path: &str, source: &[u8], args: &Args, config: &Config) -> (Vec<Diagnostic>, usize) {
+    let diagnostics = check_with_config(source, config);
     let diagnostics = filter_diagnostics(diagnostics, args);
 
     if args.should_fix() && !diagnostics.is_empty() {
@@ -181,7 +218,7 @@ fn check_file(path: &str, source: &[u8], args: &Args) -> (Vec<Diagnostic>, usize
         }
 
         // Get remaining diagnostics (also filtered)
-        let remaining = check(&fixed_source);
+        let remaining = check_with_config(&fixed_source, config);
         let remaining = filter_diagnostics(remaining, args);
         print_diagnostics(path, &remaining, args);
         (remaining, fix_count)

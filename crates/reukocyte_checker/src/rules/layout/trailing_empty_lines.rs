@@ -22,7 +22,6 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/TrailingEmptyLines.
@@ -40,12 +39,21 @@ pub enum EnforcedStyle {
 
 /// Check for trailing empty lines in the source.
 pub fn check(checker: &mut Checker) {
-    // TODO: Get style from configuration
-    let style = EnforcedStyle::FinalNewline;
+    let config = &checker.config().layout.trailing_empty_lines;
+    if !config.enabled {
+        return;
+    }
+    let severity = config.severity;
+
+    // Convert config style to local enum
+    let style = match config.enforced_style {
+        crate::config::layout::trailing_empty_lines::EnforcedStyle::FinalNewline => EnforcedStyle::FinalNewline,
+        crate::config::layout::trailing_empty_lines::EnforcedStyle::FinalBlankLine => EnforcedStyle::FinalBlankLine,
+    };
 
     if let Some((start, end, replacement, message)) = analyze(checker.source(), style) {
         let fix = Fix::safe(vec![Edit::replacement(start, end, replacement)]);
-        checker.report(RULE_ID, message, Severity::Convention, start, end, Some(fix));
+        checker.report(RULE_ID, message, severity, start, end, Some(fix));
     }
 }
 

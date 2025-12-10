@@ -2,33 +2,36 @@ use crate::config::serde_helpers::{deserialize_enabled, deserialize_severity};
 use crate::diagnostic::Severity;
 use serde::Deserialize;
 
-/// Configuration for Layout/DefEndAlignment.
+/// Configuration for Layout/TrailingEmptyLines.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct DefEndAlignmentConfig {
+pub struct TrailingEmptyLinesConfig {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
     /// Severity level for this cop.
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
-    pub enforced_style_align_with: EnforcedStyleAlignWith,
+    /// Enforced style for trailing empty lines.
+    pub enforced_style: EnforcedStyle,
 }
-impl Default for DefEndAlignmentConfig {
+impl Default for TrailingEmptyLinesConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            severity: Severity::Warning,
-            enforced_style_align_with: EnforcedStyleAlignWith::default(),
+            severity: Severity::Convention,
+            enforced_style: EnforcedStyle::default(),
         }
     }
 }
 
-/// Alignment style for Layout/DefEndAlignment.
+/// Enforced style for trailing empty lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum EnforcedStyleAlignWith {
+pub enum EnforcedStyle {
+    /// Require exactly one final newline (no trailing blank lines).
     #[default]
-    StartOfLine,
-    Def,
+    FinalNewline,
+    /// Require one blank line followed by a final newline.
+    FinalBlankLine,
 }

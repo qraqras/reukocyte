@@ -363,6 +363,8 @@ dependencies = [
  "reukocyte_macros",
  "ruby-prism",
  "rustc-hash",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]

@@ -6,12 +6,17 @@ use crate::config::layout::indentation_consistency::EnforcedStyle;
 use crate::custom_nodes::AssignmentNode;
 use crate::diagnostic::Edit;
 use crate::diagnostic::Fix;
-use crate::diagnostic::Severity;
 use crate::rule::*;
 use crate::utility::access_modifier::*;
 use crate::utility::call_node::first_part_of_call_chain;
 use reukocyte_macros::check;
 use ruby_prism::*;
+
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_width::IndentationWidthConfig {
+    &checker.config().layout.indentation_width
+}
 
 /// Layout/IndentationWidth rule.
 pub struct IndentationWidth;
@@ -273,7 +278,7 @@ fn check_indentation(base_loc: &Location, node: &Node, checker: &mut Checker, st
             indentation,
             style.as_str()
         ),
-        Severity::Convention,
+        config(checker).severity,
         report_start,
         report_end,
         fix,

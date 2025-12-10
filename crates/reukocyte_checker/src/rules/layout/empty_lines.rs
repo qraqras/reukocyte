@@ -24,7 +24,6 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/EmptyLines.
@@ -32,11 +31,14 @@ pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::EmptyLines);
 
 /// Check for consecutive empty lines in the source.
 pub fn check(checker: &mut Checker) {
+    let config = &checker.config().layout.empty_lines;
+    let severity = config.severity;
+
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end, message) in edit_ranges {
         // Fix: remove extra blank lines, keeping just one
         let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-        checker.report(RULE_ID, message, Severity::Convention, start, end, Some(fix));
+        checker.report(RULE_ID, message, severity, start, end, Some(fix));
     }
 }
 
