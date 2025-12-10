@@ -1,9 +1,9 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-/// Rueko: An extremely fast Ruby linter (Reukocyte)
+/// Reuko: An extremely fast Ruby linter (Reukocyte)
 #[derive(Debug, Parser)]
-#[command(name = "rueko")]
+#[command(name = "reuko")]
 #[command(author, version, about, long_about = None)]
 #[command(after_help = "For more information, see: https://github.com/qraqras/reukocyte")]
 pub struct Args {
@@ -11,9 +11,7 @@ pub struct Args {
     #[arg(value_name = "FILE", default_value = ".")]
     pub files: Vec<PathBuf>,
 
-    // ============================================================
-    // Autocorrection Options
-    // ============================================================
+    // **************** Autocorrection Options ****************
     /// Autocorrect offenses (only when it's safe)
     #[arg(short = 'a', long = "autocorrect")]
     pub autocorrect: bool,
@@ -22,41 +20,37 @@ pub struct Args {
     #[arg(short = 'A', long = "autocorrect-all")]
     pub autocorrect_all: bool,
 
-    // ============================================================
-    // Rule Selection Options
-    // ============================================================
-    /// Run only the given cop(s)
-    #[arg(long, value_name = "COP1,COP2,...", value_delimiter = ',')]
+    // **************** Rule Selection Options ****************
+    /// Run only the given rule(s)
+    #[arg(long, value_name = "RULE1,RULE2,...", value_delimiter = ',')]
     pub only: Option<Vec<String>>,
 
-    /// Exclude the given cop(s)
-    #[arg(long, value_name = "COP1,COP2,...", value_delimiter = ',')]
+    /// Exclude the given rule(s)
+    #[arg(long, value_name = "RULE1,RULE2,...", value_delimiter = ',')]
     pub except: Option<Vec<String>>,
 
-    /// Run only lint cops
+    /// Run only lint rules
     #[arg(short = 'l', long = "lint")]
     pub lint: bool,
 
-    /// Run only layout cops, with autocorrect on
+    /// Run only layout rules, with autocorrect on
     #[arg(short = 'x', long = "fix-layout")]
     pub fix_layout: bool,
 
-    /// Run only safe cops
+    /// Run only safe rules
     #[arg(long)]
     pub safe: bool,
 
-    // ============================================================
-    // Output Options
-    // ============================================================
+    // **************** Output Options ****************
     /// Choose an output formatter
     #[arg(short = 'f', long = "format", value_name = "FORMATTER")]
     pub format: Option<OutputFormat>,
 
-    /// Display cop names in offense messages (default: true)
+    /// Display rule names in offense messages (default: true)
     #[arg(short = 'D', long = "display-cop-names", default_value = "true")]
     pub display_cop_names: bool,
 
-    /// Do not display cop names in offense messages
+    /// Do not display rule names in offense messages
     #[arg(long = "no-display-cop-names")]
     pub no_display_cop_names: bool,
 
@@ -76,9 +70,7 @@ pub struct Args {
     #[arg(long = "no-color")]
     pub no_color: bool,
 
-    // ============================================================
-    // Configuration Options
-    // ============================================================
+    // **************** Configuration Options ****************
     /// Specify configuration file
     #[arg(short = 'c', long = "config", value_name = "FILE")]
     pub config: Option<PathBuf>,
@@ -87,9 +79,7 @@ pub struct Args {
     #[arg(short = 's', long = "stdin", value_name = "FILE")]
     pub stdin: Option<PathBuf>,
 
-    // ============================================================
-    // Behavior Options
-    // ============================================================
+    // **************** Behavior Options ****************
     /// Minimum severity for exit with error code
     #[arg(long = "fail-level", value_name = "SEVERITY")]
     pub fail_level: Option<Severity>,
@@ -110,9 +100,7 @@ pub struct Args {
     #[arg(long = "no-parallel")]
     pub no_parallel: bool,
 
-    // ============================================================
-    // Debug/Info Options
-    // ============================================================
+    // **************** Debug/Info Options ****************
     /// Display debug info
     #[arg(short = 'd', long = "debug")]
     pub debug: bool,
@@ -121,6 +109,36 @@ pub struct Args {
     #[arg(long = "display-time")]
     pub display_time: bool,
 }
+impl Args {
+    /// Check if any autocorrect mode is enabled
+    pub fn should_fix(&self) -> bool {
+        // `-a` or `-A` or `-x` enables fixing
+        self.autocorrect || self.autocorrect_all || self.fix_layout
+    }
+    /// Check if unsafe fixes should be applied
+    pub fn unsafe_fixes(&self) -> bool {
+        self.autocorrect_all
+    }
+    /// Get the effective output format
+    pub fn output_format(&self) -> OutputFormat {
+        self.format.unwrap_or_default()
+    }
+    /// Check if color should be enabled
+    pub fn use_color(&self) -> bool {
+        if self.no_color {
+            false
+        } else if self.color {
+            true
+        } else {
+            // Auto-detect based on terminal
+            atty_check()
+        }
+    }
+    /// Check if cop names should be displayed
+    pub fn show_cop_names(&self) -> bool {
+        !self.no_display_cop_names && self.display_cop_names
+    }
+}
 
 /// Output formatter type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -128,36 +146,28 @@ pub enum OutputFormat {
     /// JSON format (RuboCop compatible)
     #[value(name = "json", alias = "j")]
     Json,
-
     /// Simple text output
     #[value(name = "simple", alias = "s")]
     Simple,
-
     /// Minimal output
     #[value(name = "quiet", alias = "q")]
     Quiet,
-
     /// Progress display (RuboCop default)
     #[value(name = "progress", alias = "p")]
     Progress,
-
     /// Clang-style output
     #[value(name = "clang", alias = "c")]
     Clang,
-
     /// Emacs format
     #[value(name = "emacs", alias = "e")]
     Emacs,
-
     /// GitHub Actions format
     #[value(name = "github", alias = "g")]
     Github,
-
     /// Files only
     #[value(name = "files", alias = "fi")]
     Files,
 }
-
 impl Default for OutputFormat {
     fn default() -> Self {
         Self::Progress
@@ -170,65 +180,25 @@ pub enum Severity {
     /// Info level
     #[value(name = "info", alias = "I")]
     Info,
-
     /// Refactor level
     #[value(name = "refactor", alias = "R")]
     Refactor,
-
     /// Convention level
     #[value(name = "convention", alias = "C")]
     Convention,
-
     /// Warning level
     #[value(name = "warning", alias = "W")]
     Warning,
-
     /// Error level
     #[value(name = "error", alias = "E")]
     Error,
-
     /// Fatal level
     #[value(name = "fatal", alias = "F")]
     Fatal,
 }
-
 impl Default for Severity {
     fn default() -> Self {
         Self::Convention
-    }
-}
-
-impl Args {
-    /// Check if any autocorrect mode is enabled
-    pub fn should_fix(&self) -> bool {
-        self.autocorrect || self.autocorrect_all || self.fix_layout
-    }
-
-    /// Check if unsafe fixes should be applied
-    pub fn unsafe_fixes(&self) -> bool {
-        self.autocorrect_all
-    }
-
-    /// Get the effective output format
-    pub fn output_format(&self) -> OutputFormat {
-        self.format.unwrap_or_default()
-    }
-
-    /// Check if color should be enabled
-    pub fn use_color(&self) -> bool {
-        if self.no_color {
-            false
-        } else if self.color {
-            true
-        } else {
-            // Auto-detect based on terminal
-            atty_check()
-        }
-    }
-
-    /// Check if cop names should be displayed
-    pub fn show_cop_names(&self) -> bool {
-        !self.no_display_cop_names && self.display_cop_names
     }
 }
 
@@ -251,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_default_values() {
-        let args = Args::parse_from(["rueko", "."]);
+        let args = Args::parse_from(["reuko", "."]);
         assert!(!args.autocorrect);
         assert!(!args.autocorrect_all);
         assert!(args.only.is_none());
@@ -260,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_autocorrect() {
-        let args = Args::parse_from(["rueko", "-a", "."]);
+        let args = Args::parse_from(["reuko", "-a", "."]);
         assert!(args.autocorrect);
         assert!(args.should_fix());
         assert!(!args.unsafe_fixes());
@@ -268,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_autocorrect_all() {
-        let args = Args::parse_from(["rueko", "-A", "."]);
+        let args = Args::parse_from(["reuko", "-A", "."]);
         assert!(args.autocorrect_all);
         assert!(args.should_fix());
         assert!(args.unsafe_fixes());
@@ -276,48 +246,37 @@ mod tests {
 
     #[test]
     fn test_only_option() {
-        let args = Args::parse_from([
-            "rueko",
-            "--only",
-            "Layout/TrailingWhitespace,Lint/Debugger",
-            ".",
-        ]);
-        assert_eq!(
-            args.only,
-            Some(vec![
-                "Layout/TrailingWhitespace".to_string(),
-                "Lint/Debugger".to_string()
-            ])
-        );
+        let args = Args::parse_from(["reuko", "--only", "Layout/TrailingWhitespace,Lint/Debugger", "."]);
+        assert_eq!(args.only, Some(vec!["Layout/TrailingWhitespace".to_string(), "Lint/Debugger".to_string()]));
     }
 
     #[test]
     fn test_format_json() {
-        let args = Args::parse_from(["rueko", "-f", "json", "."]);
+        let args = Args::parse_from(["reuko", "-f", "json", "."]);
         assert_eq!(args.format, Some(OutputFormat::Json));
     }
 
     #[test]
     fn test_format_short() {
-        let args = Args::parse_from(["rueko", "-f", "j", "."]);
+        let args = Args::parse_from(["reuko", "-f", "j", "."]);
         assert_eq!(args.format, Some(OutputFormat::Json));
     }
 
     #[test]
     fn test_fail_level() {
-        let args = Args::parse_from(["rueko", "--fail-level", "warning", "."]);
+        let args = Args::parse_from(["reuko", "--fail-level", "warning", "."]);
         assert_eq!(args.fail_level, Some(Severity::Warning));
     }
 
     #[test]
     fn test_config_file() {
-        let args = Args::parse_from(["rueko", "-c", ".rubocop.yml", "."]);
+        let args = Args::parse_from(["reuko", "-c", ".rubocop.yml", "."]);
         assert_eq!(args.config, Some(PathBuf::from(".rubocop.yml")));
     }
 
     #[test]
     fn test_fix_layout() {
-        let args = Args::parse_from(["rueko", "-x", "."]);
+        let args = Args::parse_from(["reuko", "-x", "."]);
         assert!(args.fix_layout);
         assert!(args.should_fix());
     }

@@ -11,6 +11,12 @@ use crate::utility::node::is_assignment;
 use reukocyte_macros::check;
 use ruby_prism::*;
 
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::end_alignment::EndAlignment {
+    &checker.config().layout.end_alignment
+}
+
 /// Layout/EndAlignment rule.
 pub struct EndAlignment;
 impl Rule for EndAlignment {
@@ -25,7 +31,7 @@ impl Check<ClassNode<'_>> for EndAlignment {
 #[check(SingletonClassNode)]
 impl Check<SingletonClassNode<'_>> for EndAlignment {
     fn check(node: &SingletonClassNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && is_assignment(parent)
         {
             check_asgn_alignment(parent.location(), node.location(), node.class_keyword_loc(), node.end_keyword_loc(), checker);
@@ -78,11 +84,11 @@ impl Check<UntilNode<'_>> for EndAlignment {
 #[check(CaseNode)]
 impl Check<CaseNode<'_>> for EndAlignment {
     fn check(node: &CaseNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && parent.as_arguments_node().is_some()
         {
             check_asgn_alignment(
-                checker.ancestor(1).unwrap().location(),
+                checker.semantic().ancestor(1).unwrap().location(),
                 node.location(),
                 node.case_keyword_loc(),
                 node.end_keyword_loc(),
@@ -96,11 +102,11 @@ impl Check<CaseNode<'_>> for EndAlignment {
 #[check(CaseMatchNode)]
 impl Check<CaseMatchNode<'_>> for EndAlignment {
     fn check(node: &CaseMatchNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent()
+        if let Some(parent) = checker.semantic().parent()
             && parent.as_arguments_node().is_some()
         {
             check_asgn_alignment(
-                checker.ancestor(1).unwrap().location(),
+                checker.semantic().ancestor(1).unwrap().location(),
                 node.location(),
                 node.case_keyword_loc(),
                 node.end_keyword_loc(),
@@ -146,7 +152,7 @@ fn check_asgn_alignment(outer_loc: Location, inner_loc: Location, inner_keyword_
         &outer_loc,
         &inner_end_loc,
         &inner_keyword_loc,
-        match checker.line_index().are_on_same_line(outer_loc.end_offset(), inner_loc.start_offset()) {
+        match checker.line_index().are_on_same_line(outer_loc.start_offset(), inner_loc.start_offset()) {
             true => &outer_loc,
             false => &inner_loc,
         },
@@ -208,7 +214,7 @@ fn check_end_kw_alignment(loc: &Location, end_loc: &Location, keyword_loc: &Loca
     checker.report(
         EndAlignment::ID,
         format!("`end` keyword should be aligned with its opening keyword."),
-        crate::diagnostic::Severity::Convention,
+        config(checker).base.severity,
         end_loc.start_offset(),
         end_loc.end_offset(),
         Some(fix),

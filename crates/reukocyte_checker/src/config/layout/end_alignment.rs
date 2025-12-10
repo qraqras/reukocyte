@@ -1,22 +1,30 @@
+use crate::config::BaseCopConfig;
+use crate::diagnostic::Severity;
+use serde::Deserialize;
+
 /// Configuration for Layout/EndAlignment.
-///
-/// Controls how `end` keywords should be aligned.
-#[derive(Debug, Clone)]
-pub struct EndAlignmentConfig {
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, rename_all = "PascalCase")]
+pub struct EndAlignment {
+    /// Base configuration (enabled, severity, exclude, include).
+    #[serde(flatten)]
+    pub base: BaseCopConfig,
     /// The style of alignment for `end` keywords.
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
 
-impl Default for EndAlignmentConfig {
+impl Default for EndAlignment {
     fn default() -> Self {
         Self {
+            base: BaseCopConfig::with_severity(Severity::Warning),
             enforced_style_align_with: EnforcedStyleAlignWith::default(),
         }
     }
 }
 
-/// Alignment style for `end` keywords (Layout/EndAlignment).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// Alignment style for Layout/EndAlignment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EnforcedStyleAlignWith {
     #[default]
     Keyword,

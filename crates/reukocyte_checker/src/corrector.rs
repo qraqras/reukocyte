@@ -3,21 +3,15 @@ use crate::{Applicability, Edit, Fix};
 /// Error type for conflicts when merging fixes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClobberingError {
-    /// Same range has different replacement content.
-    /// RuboCop: `different_replacements: :raise`
     DifferentReplacements {
         range: (usize, usize),
         existing_content: String,
         new_content: String,
     },
-    /// An insertion point falls within a deletion range.
-    /// RuboCop: `swallowed_insertions: :raise`
     SwallowedInsertion {
         insertion_pos: usize,
         deletion_range: (usize, usize),
     },
-    /// Ranges overlap but are not identical.
-    /// Will be resolved in the next iteration.
     Overlapping {
         existing: (usize, usize),
         new: (usize, usize),
@@ -61,10 +55,7 @@ impl Corrector {
             }
             // 2. Insertion swallowed by deletion
             // New edit is an insertion (start == end) inside an existing deletion
-            if new_edit.start == new_edit.end
-                && existing_edit.content.is_empty()
-                && existing_edit.start < new_edit.start
-                && new_edit.start < existing_edit.end
+            if new_edit.start == new_edit.end && existing_edit.content.is_empty() && existing_edit.start < new_edit.start && new_edit.start < existing_edit.end
             {
                 return Err(ClobberingError::SwallowedInsertion {
                     insertion_pos: new_edit.start,
@@ -87,12 +78,7 @@ impl Corrector {
             // We instead reject overlaps and let the next iteration handle them.
             // This is simpler and produces the same final result, though may require
             // more iterations in rare cases.
-            if ranges_overlap(
-                existing_edit.start,
-                existing_edit.end,
-                new_edit.start,
-                new_edit.end,
-            ) {
+            if ranges_overlap(existing_edit.start, existing_edit.end, new_edit.start, new_edit.end) {
                 return Err(ClobberingError::Overlapping {
                     existing: (existing_edit.start, existing_edit.end),
                     new: (new_edit.start, new_edit.end),
@@ -102,7 +88,6 @@ impl Corrector {
 
         Ok(())
     }
-
     /// Apply all merged edits to the source code.
     pub fn apply(&self, source: &[u8]) -> Vec<u8> {
         // If no edits, return original source
@@ -193,10 +178,7 @@ mod tests {
         assert!(corrector.merge(&fix1).is_ok());
         let result = corrector.merge(&fix2);
 
-        assert!(matches!(
-            result,
-            Err(ClobberingError::DifferentReplacements { .. })
-        ));
+        assert!(matches!(result, Err(ClobberingError::DifferentReplacements { .. })));
         assert_eq!(corrector.edit_count(), 1); // Only first fix applied
     }
 
@@ -238,10 +220,7 @@ mod tests {
         assert!(corrector.merge(&fix1).is_ok());
         let result = corrector.merge(&fix2);
 
-        assert!(matches!(
-            result,
-            Err(ClobberingError::SwallowedInsertion { .. })
-        ));
+        assert!(matches!(result, Err(ClobberingError::SwallowedInsertion { .. })));
     }
 
     #[test]

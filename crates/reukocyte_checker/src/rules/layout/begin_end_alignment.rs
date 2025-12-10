@@ -9,6 +9,12 @@ use crate::rule::RuleId;
 use reukocyte_macros::check;
 use ruby_prism::*;
 
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::begin_end_alignment::BeginEndAlignment {
+    &checker.config().layout.begin_end_alignment
+}
+
 /// Layout/BeginEndAlignment rule.
 pub struct BeginEndAlignment;
 impl Rule for BeginEndAlignment {
@@ -25,8 +31,9 @@ fn check_end_kw_alignment(node: &BeginNode, checker: &mut Checker) {
     if checker.is_ignored_node(node.location().start_offset(), node.location().end_offset()) {
         return;
     }
+    let cfg = config(checker);
     if let Some(end_keyword_loc) = node.end_keyword_loc() {
-        let column_delta = match checker.config().layout.begin_end_alignment.enforced_style_align_with {
+        let column_delta = match cfg.enforced_style_align_with {
             EnforcedStyleAlignWith::StartOfLine => {
                 let start_of_line = checker.line_index().indentation(node.location().start_offset());
                 let are_same_line = checker.line_index().are_on_same_line(start_of_line, end_keyword_loc.start_offset());
@@ -70,7 +77,7 @@ fn check_end_kw_alignment(node: &BeginNode, checker: &mut Checker) {
         checker.report(
             BeginEndAlignment::ID,
             format!("`end` keyword should be aligned with its opening keyword."),
-            crate::diagnostic::Severity::Convention,
+            cfg.base.severity,
             end_keyword_loc.start_offset(),
             end_keyword_loc.end_offset(),
             Some(fix),

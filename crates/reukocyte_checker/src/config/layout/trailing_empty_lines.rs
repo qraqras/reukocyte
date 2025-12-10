@@ -1,32 +1,33 @@
 use crate::config::BaseCopConfig;
 use serde::Deserialize;
 
-/// Configuration for Layout/AccessModifierIndentation.
+/// Configuration for Layout/TrailingEmptyLines.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct AccessModifierIndentation {
+pub struct TrailingEmptyLines {
     /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
+    /// Enforced style for trailing empty lines.
     pub enforced_style: EnforcedStyle,
-    pub indentation_width: Option<usize>,
 }
 
-impl Default for AccessModifierIndentation {
+impl Default for TrailingEmptyLines {
     fn default() -> Self {
         Self {
             base: BaseCopConfig::default(),
             enforced_style: EnforcedStyle::default(),
-            indentation_width: None,
         }
     }
 }
 
-/// Alignment style for Layout/AccessModifierIndentation.
+/// Enforced style for trailing empty lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EnforcedStyle {
+    /// Require exactly one final newline (no trailing blank lines).
     #[default]
-    Indent,
-    Outdent,
+    FinalNewline,
+    /// Require one blank line followed by a final newline.
+    FinalBlankLine,
 }

@@ -259,6 +259,16 @@ struct RuleInfo {
     module: String,
 }
 
+impl RuleInfo {
+    /// Get the config path for this rule to check if enabled.
+    /// e.g., "layout::def_end_alignment" -> "layout.def_end_alignment.enabled"
+    fn config_path(&self) -> String {
+        // Convert module path to config path
+        // e.g., "layout::def_end_alignment" -> "layout.def_end_alignment"
+        self.module.replace("::", ".")
+    }
+}
+
 /// Extracts the node name from a full type path.
 /// e.g., "ruby_prism::CallNode" -> "CallNode"
 fn node_name(type_path: &str) -> &str {
@@ -300,13 +310,18 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
         if let Some(rules) = rules {
             for rule in rules {
                 let full_path = format!("crate::rules::{}::{}", rule.module, rule.name);
-                writeln!(file, "        if $checker.is_enabled(<{} as crate::rule::Rule>::ID) {{", full_path).unwrap();
+                let config_path = rule.config_path();
+                // Generate enabled check and include/exclude check before calling the rule
+                writeln!(file, "        {{").unwrap();
+                writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
+                writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{").unwrap();
                 writeln!(
                     file,
-                    "            <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
+                    "                <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
                     full_path, type_path
                 )
                 .unwrap();
+                writeln!(file, "            }}").unwrap();
                 writeln!(file, "        }}").unwrap();
             }
         }

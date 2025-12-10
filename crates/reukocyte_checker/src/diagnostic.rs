@@ -13,13 +13,7 @@ pub struct RawDiagnostic {
 impl RawDiagnostic {
     /// Convert to full Diagnostic with resolved line/column.
     #[inline]
-    pub fn resolve(
-        self,
-        line_start: usize,
-        line_end: usize,
-        column_start: usize,
-        column_end: usize,
-    ) -> Diagnostic {
+    pub fn resolve(self, line_start: usize, line_end: usize, column_start: usize, column_end: usize) -> Diagnostic {
         Diagnostic {
             rule_id: self.rule_id,
             message: self.message,
@@ -178,11 +172,7 @@ pub struct Edit {
 impl Edit {
     /// Create a new edit that replaces a range with new content.
     pub fn replacement(start: usize, end: usize, content: String) -> Self {
-        Self {
-            start,
-            end,
-            content,
-        }
+        Self { start, end, content }
     }
     /// Create an edit that deletes a range.
     pub fn deletion(start: usize, end: usize) -> Self {

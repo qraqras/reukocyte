@@ -1,0 +1,19 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'db/schema.rb'
+
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: variable
+  Severity: error
+
+Layout/IndentationWidth:
+  Width: 2
+
+Layout/AccessModifierIndentation:
+  EnforcedStyle: indent
+
+Layout/DefEndAlignment:
+  Enabled: false

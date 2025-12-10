@@ -1,23 +1,20 @@
 use crate::config::BaseCopConfig;
+use crate::diagnostic::Severity;
 use serde::Deserialize;
 
-/// Configuration for Layout/IndentationWidth.
+/// Configuration for Lint/Debugger.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct IndentationWidth {
+pub struct Debugger {
     /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
-    pub width: i32,
-    pub allowed_patterns: Vec<i32>,
 }
 
-impl Default for IndentationWidth {
+impl Default for Debugger {
     fn default() -> Self {
         Self {
-            base: BaseCopConfig::default(),
-            width: 2,
-            allowed_patterns: Vec::new(),
+            base: BaseCopConfig::with_severity(Severity::Warning),
         }
     }
 }

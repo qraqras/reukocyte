@@ -1,5 +1,4 @@
 use crate::Checker;
-use crate::Severity;
 use crate::rule::{Check, LintRule, Rule, RuleId};
 use reukocyte_macros::check;
 use ruby_prism::CallNode;
@@ -27,9 +26,21 @@ impl Rule for Debugger {
     const ID: RuleId = RuleId::Lint(LintRule::Debugger);
 }
 
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::lint::debugger::Debugger {
+    &checker.config().lint.debugger
+}
+
 #[check(CallNode)]
 impl Check<CallNode<'_>> for Debugger {
     fn check(node: &CallNode, checker: &mut Checker) {
+        let cfg = config(checker);
+        if !cfg.base.enabled {
+            return;
+        }
+        let severity = cfg.base.severity;
+
         let method_name = node.name().as_slice();
         let location = node.location();
 
@@ -40,7 +51,7 @@ impl Check<CallNode<'_>> for Debugger {
                     checker.report(
                         Self::ID,
                         format!("Debugger statement `{}` detected.", String::from_utf8_lossy(debugger_method)),
-                        Severity::Warning,
+                        severity,
                         location.start_offset(),
                         location.end_offset(),
                         None,
@@ -70,7 +81,7 @@ impl Check<CallNode<'_>> for Debugger {
                                 String::from_utf8_lossy(expected_recv),
                                 String::from_utf8_lossy(expected_method)
                             ),
-                            Severity::Warning,
+                            severity,
                             location.start_offset(),
                             location.end_offset(),
                             None,

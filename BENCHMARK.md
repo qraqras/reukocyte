@@ -31,7 +31,7 @@
 ### Medium File (40KB, 1000 methods)
 
 ```
-Benchmark 1: target/release/rueko tmp/bench/medium.rb
+Benchmark 1: target/release/reuko tmp/bench/medium.rb
   Time (mean ± σ):       1.9 ms ±   0.3 ms
   Range (min … max):     1.6 ms …   3.0 ms
 
@@ -45,7 +45,7 @@ Summary: Reukocyte ran 119.61 ± 22.27 times faster
 ### Large File (200KB, 5000 methods)
 
 ```
-Benchmark 1: target/release/rueko tmp/bench/large.rb
+Benchmark 1: target/release/reuko tmp/bench/large.rb
   Time (mean ± σ):       4.8 ms ±   0.8 ms
   Range (min … max):     4.0 ms …   7.1 ms
 
@@ -83,6 +83,6 @@ cargo bench --bench layout
 
 # Manual hyperfine comparison
 hyperfine --warmup 5 -i \
-  'target/release/rueko FILE.rb' \
+  'target/release/reuko FILE.rb' \
   'rubocop FILE.rb --only Layout/... -f quiet'
 ```

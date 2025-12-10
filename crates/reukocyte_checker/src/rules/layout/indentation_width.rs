@@ -6,12 +6,17 @@ use crate::config::layout::indentation_consistency::EnforcedStyle;
 use crate::custom_nodes::AssignmentNode;
 use crate::diagnostic::Edit;
 use crate::diagnostic::Fix;
-use crate::diagnostic::Severity;
 use crate::rule::*;
 use crate::utility::access_modifier::*;
 use crate::utility::call_node::first_part_of_call_chain;
 use reukocyte_macros::check;
 use ruby_prism::*;
+
+/// Get the config for this rule
+#[inline]
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_width::IndentationWidth {
+    &checker.config().layout.indentation_width
+}
 
 /// Layout/IndentationWidth rule.
 pub struct IndentationWidth;
@@ -21,7 +26,7 @@ impl Rule for IndentationWidth {
 #[check(StatementsNode)]
 impl Check<StatementsNode<'_>> for IndentationWidth {
     fn check(node: &StatementsNode, checker: &mut Checker) {
-        if let Some(parent) = checker.parent() {
+        if let Some(parent) = checker.semantic().parent() {
             match parent {
                 Node::BeginNode { .. } => check_begin_node(&parent.as_begin_node().unwrap(), node, checker),
                 Node::BlockNode { .. } => check_block_node(&parent.as_block_node().unwrap(), node, checker),
@@ -122,7 +127,7 @@ fn check_class_node(class_node: &ClassNode, statements: &StatementsNode, checker
 fn check_def_node(def_node: &DefNode, statements: &StatementsNode, checker: &mut Checker) {
     // Check if DefNode is a method call argument.
     // AST structure: CallNode -> ArgumentsNode -> DefNode -> StatementsNode
-    let call_node = checker.ancestor(2).and_then(|ancestor| ancestor.as_call_node());
+    let call_node = checker.semantic().ancestor(2).and_then(|ancestor| ancestor.as_call_node());
     match call_node {
         Some(call_node) => match checker.config().layout.def_end_alignment.enforced_style_align_with {
             DefAlignWith::StartOfLine => check_statements(&call_node.location(), statements, checker),
@@ -273,7 +278,7 @@ fn check_indentation(base_loc: &Location, node: &Node, checker: &mut Checker, st
             indentation,
             style.as_str()
         ),
-        Severity::Convention,
+        config(checker).base.severity,
         report_start,
         report_end,
         fix,
@@ -294,7 +299,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
     let body = statements.body();
 
     if let Some(first) = body.iter().next() {
-        if is_access_modifier(&first, checker) {
+        let is_modifier = checker.semantic().node_id_for(&first).is_some_and(|id| is_access_modifier(&id, checker));
+        if is_modifier {
             match checker.config().layout.access_modifier_indentation.enforced_style {
                 AccessModifierEnforcedStyle::Indent => check_indentation(base_loc, &first, checker, EnforcedStyle::Normal),
                 AccessModifierEnforcedStyle::Outdent => {}
@@ -310,8 +316,10 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
 
     match checker.config().layout.indentation_consistency.enforced_style {
         EnforcedStyle::Normal => {
-            for member in body.iter() {
-                if is_access_modifier(&member, checker) {
+            // Skip the first member (already checked above)
+            for member in body.iter().skip(1) {
+                let is_modifier = checker.semantic().node_id_for(&member).is_some_and(|id| is_access_modifier(&id, checker));
+                if is_modifier {
                     continue;
                 }
                 check_indentation(base_loc, &member, checker, EnforcedStyle::Normal);
@@ -320,7 +328,8 @@ pub fn check_members(base_loc: &Location, statements: &StatementsNode, checker: 
         EnforcedStyle::IndentedInternalMethods => {
             let mut previous_modifier: Option<Location> = None;
             for member in body.iter() {
-                if is_special_modifier(&member, checker) {
+                let is_special = checker.semantic().node_id_for(&member).is_some_and(|id| is_special_modifier(&id, checker));
+                if is_special {
                     previous_modifier = Some(member.location());
                 } else if let Some(modifier_loc) = previous_modifier.take() {
                     check_indentation(&modifier_loc, &member, checker, EnforcedStyle::IndentedInternalMethods);
@@ -349,10 +358,11 @@ fn should_check(_base_loc: &Location, node: &Node, checker: &Checker) -> bool {
 /// Check if the body starts with an access modifier (private, protected, public).
 fn starts_with_access_modifier(statements: &StatementsNode, checker: &Checker) -> bool {
     if let Some(first) = statements.body().iter().next() {
-        is_bare_access_modifier(&first, checker)
-    } else {
-        false
+        if let Some(node_id) = checker.semantic().node_id_for(&first) {
+            return is_bare_access_modifier(&node_id, checker);
+        }
     }
+    false
 }
 
 #[cfg(test)]

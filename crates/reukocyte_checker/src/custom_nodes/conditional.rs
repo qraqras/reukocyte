@@ -13,7 +13,6 @@ pub enum ConditionalNode<'a> {
     UntilNode(&'a UntilNode<'a>),
     WhileNode(&'a WhileNode<'a>),
 }
-
 impl<'a> ConditionalNode<'a> {
     /// Get the underlying node as a generic `Node`.
     pub fn as_node(&self) -> Node<'a> {
@@ -26,7 +25,6 @@ impl<'a> ConditionalNode<'a> {
             Self::WhileNode(n) => n.as_node(),
         }
     }
-
     /// Get the location of the entire assignment node.
     pub fn location(&self) -> Location<'a> {
         match self {
@@ -38,7 +36,6 @@ impl<'a> ConditionalNode<'a> {
             Self::WhileNode(n) => n.location(),
         }
     }
-
     /// Get the location of the conditional keyword (e.g., `if`, `case`).
     pub fn keyword_loc(&self) -> Option<Location<'a>> {
         match self {
@@ -51,6 +48,7 @@ impl<'a> ConditionalNode<'a> {
         }
     }
 
+    /// Get the location of the `end` keyword.
     pub fn end_keyword_loc(&self) -> Option<Location<'a>> {
         match self {
             Self::CaseMatchNode(n) => Some(n.end_keyword_loc()),
@@ -62,11 +60,6 @@ impl<'a> ConditionalNode<'a> {
         }
     }
 }
-
-// ============================================================================
-// From implementations for easy conversion
-// ============================================================================
-
 impl<'a> From<&'a CaseMatchNode<'a>> for ConditionalNode<'a> {
     fn from(node: &'a CaseMatchNode<'a>) -> Self {
         Self::CaseMatchNode(node)

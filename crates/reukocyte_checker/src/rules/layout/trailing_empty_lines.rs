@@ -22,7 +22,6 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::Severity;
 use crate::rule::{LayoutRule, RuleId};
 
 /// Rule identifier for Layout/TrailingEmptyLines.
@@ -40,19 +39,25 @@ pub enum EnforcedStyle {
 
 /// Check for trailing empty lines in the source.
 pub fn check(checker: &mut Checker) {
-    // TODO: Get style from configuration
-    let style = EnforcedStyle::FinalNewline;
+    let config = &checker.config().layout.trailing_empty_lines;
+    if !config.base.enabled {
+        return;
+    }
+    // Check cop-specific include/exclude
+    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        return;
+    }
+    let severity = config.base.severity;
+
+    // Convert config style to local enum
+    let style = match config.enforced_style {
+        crate::config::layout::trailing_empty_lines::EnforcedStyle::FinalNewline => EnforcedStyle::FinalNewline,
+        crate::config::layout::trailing_empty_lines::EnforcedStyle::FinalBlankLine => EnforcedStyle::FinalBlankLine,
+    };
 
     if let Some((start, end, replacement, message)) = analyze(checker.source(), style) {
         let fix = Fix::safe(vec![Edit::replacement(start, end, replacement)]);
-        checker.report(
-            RULE_ID,
-            message,
-            Severity::Convention,
-            start,
-            end,
-            Some(fix),
-        );
+        checker.report(RULE_ID, message, severity, start, end, Some(fix));
     }
 }
 
@@ -95,10 +100,7 @@ fn analyze(source: &[u8], style: EnforcedStyle) -> Option<(usize, usize, String,
         } else if blank_lines == 0 {
             "Trailing blank line missing.".to_string()
         } else {
-            format!(
-                "{} trailing blank lines instead of {} detected.",
-                blank_lines, wanted_blank_lines
-            )
+            format!("{} trailing blank lines instead of {} detected.", blank_lines, wanted_blank_lines)
         };
 
         let replacement = "\n".repeat(wanted_newlines);
@@ -136,10 +138,7 @@ mod tests {
     fn test_final_newline_ok() {
         let source = b"class Foo\nend\n";
         let diagnostics = check(source);
-        let trailing = diagnostics
-            .iter()
-            .filter(|d| d.rule() == "Layout/TrailingEmptyLines")
-            .count();
+        let trailing = diagnostics.iter().filter(|d| d.rule() == "Layout/TrailingEmptyLines").count();
         assert_eq!(trailing, 0);
     }
 
@@ -147,10 +146,7 @@ mod tests {
     fn test_missing_final_newline() {
         let source = b"class Foo\nend";
         let diagnostics = check(source);
-        let trailing: Vec<_> = diagnostics
-            .iter()
-            .filter(|d| d.rule() == "Layout/TrailingEmptyLines")
-            .collect();
+        let trailing: Vec<_> = diagnostics.iter().filter(|d| d.rule() == "Layout/TrailingEmptyLines").collect();
         assert_eq!(trailing.len(), 1);
         assert!(trailing[0].message.contains("Final newline missing"));
     }
@@ -159,10 +155,7 @@ mod tests {
     fn test_one_trailing_blank_line() {
         let source = b"class Foo\nend\n\n";
         let diagnostics = check(source);
-        let trailing: Vec<_> = diagnostics
-            .iter()
-            .filter(|d| d.rule() == "Layout/TrailingEmptyLines")
-            .collect();
+        let trailing: Vec<_> = diagnostics.iter().filter(|d| d.rule() == "Layout/TrailingEmptyLines").collect();
         assert_eq!(trailing.len(), 1);
         assert!(trailing[0].message.contains("1 trailing blank line"));
     }
@@ -171,10 +164,7 @@ mod tests {
     fn test_multiple_trailing_blank_lines() {
         let source = b"class Foo\nend\n\n\n";
         let diagnostics = check(source);
-        let trailing: Vec<_> = diagnostics
-            .iter()
-            .filter(|d| d.rule() == "Layout/TrailingEmptyLines")
-            .collect();
+        let trailing: Vec<_> = diagnostics.iter().filter(|d| d.rule() == "Layout/TrailingEmptyLines").collect();
         assert_eq!(trailing.len(), 1);
         assert!(trailing[0].message.contains("2 trailing blank lines"));
     }
@@ -183,10 +173,7 @@ mod tests {
     fn test_empty_file() {
         let source = b"";
         let diagnostics = check(source);
-        let trailing = diagnostics
-            .iter()
-            .filter(|d| d.rule() == "Layout/TrailingEmptyLines")
-            .count();
+        let trailing = diagnostics.iter().filter(|d| d.rule() == "Layout/TrailingEmptyLines").count();
         assert_eq!(trailing, 0);
     }
 }
