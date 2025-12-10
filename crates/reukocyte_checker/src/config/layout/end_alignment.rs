@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/EndAlignment.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct EndAlignmentConfig {
+pub struct EndAlignment {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -15,7 +15,7 @@ pub struct EndAlignmentConfig {
     /// The style of alignment for `end` keywords.
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
-impl Default for EndAlignmentConfig {
+impl Default for EndAlignment {
     fn default() -> Self {
         Self {
             enabled: true,

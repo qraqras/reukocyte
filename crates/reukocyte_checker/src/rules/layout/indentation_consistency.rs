@@ -11,7 +11,7 @@ use ruby_prism::*;
 
 /// Get the config for this rule
 #[inline]
-fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_consistency::IndentationConsistencyConfig {
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_consistency::IndentationConsistency {
     &checker.config().layout.indentation_consistency
 }
 

@@ -28,7 +28,7 @@ impl Rule for Debugger {
 
 /// Get the config for this rule
 #[inline]
-fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::lint::debugger::DebuggerConfig {
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::lint::debugger::Debugger {
     &checker.config().lint.debugger
 }
 

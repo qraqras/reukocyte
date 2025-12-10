@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::yaml::RubocopYaml;
+use super::yaml::{RubocopYaml, merge_configs};
 
 /// Error type for configuration loading.
 #[derive(Debug)]
@@ -80,10 +80,7 @@ pub fn parse_rubocop_yaml(content: &str) -> Result<RubocopYaml, LoadError> {
 }
 
 /// Internal function that tracks visited files to detect circular inheritance.
-fn load_with_inheritance(
-    path: &Path,
-    visited: &mut HashSet<PathBuf>,
-) -> Result<RubocopYaml, LoadError> {
+fn load_with_inheritance(path: &Path, visited: &mut HashSet<PathBuf>) -> Result<RubocopYaml, LoadError> {
     // Canonicalize path to detect circular references
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
 
@@ -130,129 +127,6 @@ fn load_with_inheritance(
     Ok(config)
 }
 
-/// Merge two configurations. Child values override parent values.
-///
-/// For each cop config field, if the child has a non-default value,
-/// it overrides the parent. Otherwise, the parent value is kept.
-fn merge_configs(parent: RubocopYaml, child: RubocopYaml) -> RubocopYaml {
-    use super::layout::*;
-    use super::lint::DebuggerConfig;
-
-    /// Merge a cop config: use child value if it differs from default,
-    /// otherwise use parent value.
-    macro_rules! merge_cop {
-        ($parent:expr, $child:expr, $default:expr) => {{
-            // If child is explicitly configured (differs from default enabled),
-            // use child's config. This is a simple heuristic.
-            // In practice, we check if child.enabled was explicitly set to false.
-            if !$child.enabled && $default.enabled {
-                // Child explicitly disabled
-                $child
-            } else if $child.enabled != $default.enabled
-                || $child.severity != $default.severity
-            {
-                // Child has explicit overrides
-                $child
-            } else {
-                // Use parent but apply child's specific option overrides
-                // For now, just use child (serde default fills in parent values anyway)
-                $child
-            }
-        }};
-    }
-
-    RubocopYaml {
-        inherit_from: child.inherit_from,
-        all_cops: merge_all_cops(parent.all_cops, child.all_cops),
-        // Layout cops - child overrides parent
-        layout_access_modifier_indentation: merge_cop!(
-            parent.layout_access_modifier_indentation,
-            child.layout_access_modifier_indentation,
-            AccessModifierIndentationConfig::default()
-        ),
-        layout_begin_end_alignment: merge_cop!(
-            parent.layout_begin_end_alignment,
-            child.layout_begin_end_alignment,
-            BeginEndAlignmentConfig::default()
-        ),
-        layout_def_end_alignment: merge_cop!(
-            parent.layout_def_end_alignment,
-            child.layout_def_end_alignment,
-            DefEndAlignmentConfig::default()
-        ),
-        layout_empty_lines: merge_cop!(
-            parent.layout_empty_lines,
-            child.layout_empty_lines,
-            EmptyLinesConfig::default()
-        ),
-        layout_end_alignment: merge_cop!(
-            parent.layout_end_alignment,
-            child.layout_end_alignment,
-            EndAlignmentConfig::default()
-        ),
-        layout_indentation_consistency: merge_cop!(
-            parent.layout_indentation_consistency,
-            child.layout_indentation_consistency,
-            IndentationConsistencyConfig::default()
-        ),
-        layout_indentation_style: merge_cop!(
-            parent.layout_indentation_style,
-            child.layout_indentation_style,
-            IndentationStyleConfig::default()
-        ),
-        layout_indentation_width: merge_cop!(
-            parent.layout_indentation_width,
-            child.layout_indentation_width,
-            IndentationWidthConfig::default()
-        ),
-        layout_leading_empty_lines: merge_cop!(
-            parent.layout_leading_empty_lines,
-            child.layout_leading_empty_lines,
-            LeadingEmptyLinesConfig::default()
-        ),
-        layout_trailing_empty_lines: merge_cop!(
-            parent.layout_trailing_empty_lines,
-            child.layout_trailing_empty_lines,
-            TrailingEmptyLinesConfig::default()
-        ),
-        layout_trailing_whitespace: merge_cop!(
-            parent.layout_trailing_whitespace,
-            child.layout_trailing_whitespace,
-            TrailingWhitespaceConfig::default()
-        ),
-        // Lint cops
-        lint_debugger: merge_cop!(
-            parent.lint_debugger,
-            child.lint_debugger,
-            DebuggerConfig::default()
-        ),
-    }
-}
-
-/// Merge AllCops configuration. Child values override parent values.
-fn merge_all_cops(
-    parent: super::yaml::AllCopsConfig,
-    child: super::yaml::AllCopsConfig,
-) -> super::yaml::AllCopsConfig {
-    super::yaml::AllCopsConfig {
-        target_ruby_version: child.target_ruby_version.or(parent.target_ruby_version),
-        exclude: if child.exclude.is_empty() {
-            parent.exclude
-        } else {
-            child.exclude
-        },
-        include: if child.include.is_empty() {
-            parent.include
-        } else {
-            child.include
-        },
-        use_cache: child.use_cache.or(parent.use_cache),
-        cache_root_directory: child.cache_root_directory.or(parent.cache_root_directory),
-        new_cops: child.new_cops.or(parent.new_cops),
-        suggested_extensions: child.suggested_extensions.or(parent.suggested_extensions),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,10 +139,7 @@ Layout/EndAlignment:
   EnforcedStyleAlignWith: variable
 "#;
         let config = parse_rubocop_yaml(yaml).unwrap();
-        assert_eq!(
-            config.layout_end_alignment.enforced_style_align_with,
-            EnforcedStyleAlignWith::Variable
-        );
+        assert_eq!(config.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
     }
 
     #[test]
@@ -288,13 +159,10 @@ Layout/EndAlignment:
         let merged = merge_configs(parent, child);
 
         // Enabled should still be true
-        assert!(merged.layout_end_alignment.enabled);
+        assert!(merged.end_alignment.enabled);
 
         // EnforcedStyleAlignWith should come from child
-        assert_eq!(
-            merged.layout_end_alignment.enforced_style_align_with,
-            EnforcedStyleAlignWith::Variable
-        );
+        assert_eq!(merged.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
     }
 
     #[test]
@@ -327,6 +195,6 @@ Layout/EndAlignment:
   Enabled: false
 "#;
         let config = parse_rubocop_yaml(yaml).unwrap();
-        assert!(!config.layout_end_alignment.enabled);
+        assert!(!config.end_alignment.enabled);
     }
 }

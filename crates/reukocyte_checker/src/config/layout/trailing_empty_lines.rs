@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/TrailingEmptyLines.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct TrailingEmptyLinesConfig {
+pub struct TrailingEmptyLines {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -15,7 +15,7 @@ pub struct TrailingEmptyLinesConfig {
     /// Enforced style for trailing empty lines.
     pub enforced_style: EnforcedStyle,
 }
-impl Default for TrailingEmptyLinesConfig {
+impl Default for TrailingEmptyLines {
     fn default() -> Self {
         Self {
             enabled: true,

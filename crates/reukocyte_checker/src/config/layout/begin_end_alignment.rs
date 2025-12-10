@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/BeginEndAlignment.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct BeginEndAlignmentConfig {
+pub struct BeginEndAlignment {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -14,7 +14,7 @@ pub struct BeginEndAlignmentConfig {
     pub severity: Severity,
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
-impl Default for BeginEndAlignmentConfig {
+impl Default for BeginEndAlignment {
     fn default() -> Self {
         Self {
             enabled: true,

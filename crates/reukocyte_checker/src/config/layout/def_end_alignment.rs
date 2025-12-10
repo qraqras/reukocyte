@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/DefEndAlignment.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct DefEndAlignmentConfig {
+pub struct DefEndAlignment {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -14,7 +14,7 @@ pub struct DefEndAlignmentConfig {
     pub severity: Severity,
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
-impl Default for DefEndAlignmentConfig {
+impl Default for DefEndAlignment {
     fn default() -> Self {
         Self {
             enabled: true,

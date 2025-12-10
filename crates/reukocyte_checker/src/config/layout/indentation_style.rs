@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/IndentationStyle.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct IndentationStyleConfig {
+pub struct IndentationStyle {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -17,7 +17,7 @@ pub struct IndentationStyleConfig {
     /// Width of indentation (for tab-to-spaces conversion).
     pub indentation_width: usize,
 }
-impl Default for IndentationStyleConfig {
+impl Default for IndentationStyle {
     fn default() -> Self {
         Self {
             enabled: true,

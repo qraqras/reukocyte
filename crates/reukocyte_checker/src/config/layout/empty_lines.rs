@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/EmptyLines.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct EmptyLinesConfig {
+pub struct EmptyLines {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -13,7 +13,7 @@ pub struct EmptyLinesConfig {
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
 }
-impl Default for EmptyLinesConfig {
+impl Default for EmptyLines {
     fn default() -> Self {
         Self {
             enabled: true,

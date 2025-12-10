@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/AccessModifierIndentation.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct AccessModifierIndentationConfig {
+pub struct AccessModifierIndentation {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -15,7 +15,7 @@ pub struct AccessModifierIndentationConfig {
     pub enforced_style: EnforcedStyle,
     pub indentation_width: Option<usize>,
 }
-impl Default for AccessModifierIndentationConfig {
+impl Default for AccessModifierIndentation {
     fn default() -> Self {
         Self {
             enabled: true,

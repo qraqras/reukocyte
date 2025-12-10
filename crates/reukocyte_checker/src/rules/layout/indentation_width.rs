@@ -14,7 +14,7 @@ use ruby_prism::*;
 
 /// Get the config for this rule
 #[inline]
-fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_width::IndentationWidthConfig {
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::indentation_width::IndentationWidth {
     &checker.config().layout.indentation_width
 }
 

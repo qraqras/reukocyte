@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Lint/Debugger.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct DebuggerConfig {
+pub struct Debugger {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -14,7 +14,7 @@ pub struct DebuggerConfig {
     pub severity: Severity,
 }
 
-impl Default for DebuggerConfig {
+impl Default for Debugger {
     fn default() -> Self {
         Self {
             enabled: true,

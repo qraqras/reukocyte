@@ -12,7 +12,7 @@ use ruby_prism::*;
 
 /// Get the config for this rule
 #[inline]
-fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::def_end_alignment::DefEndAlignmentConfig {
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::def_end_alignment::DefEndAlignment {
     &checker.config().layout.def_end_alignment
 }
 

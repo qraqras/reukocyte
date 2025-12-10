@@ -11,7 +11,7 @@ use ruby_prism::*;
 
 /// Get the config for this rule
 #[inline]
-fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::begin_end_alignment::BeginEndAlignmentConfig {
+fn config<'a>(checker: &'a Checker<'_>) -> &'a crate::config::layout::begin_end_alignment::BeginEndAlignment {
     &checker.config().layout.begin_end_alignment
 }
 

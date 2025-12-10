@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/TrailingWhitespace.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct TrailingWhitespaceConfig {
+pub struct TrailingWhitespace {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -13,7 +13,7 @@ pub struct TrailingWhitespaceConfig {
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
 }
-impl Default for TrailingWhitespaceConfig {
+impl Default for TrailingWhitespace {
     fn default() -> Self {
         Self {
             enabled: true,

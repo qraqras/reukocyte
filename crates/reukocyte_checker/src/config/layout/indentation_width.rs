@@ -5,7 +5,7 @@ use serde::Deserialize;
 /// Configuration for Layout/IndentationWidth.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct IndentationWidthConfig {
+pub struct IndentationWidth {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -15,7 +15,7 @@ pub struct IndentationWidthConfig {
     pub width: i32,
     pub allowed_patterns: Vec<i32>,
 }
-impl Default for IndentationWidthConfig {
+impl Default for IndentationWidth {
     fn default() -> Self {
         Self {
             enabled: true,

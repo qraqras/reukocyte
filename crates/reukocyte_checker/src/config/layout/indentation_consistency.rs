@@ -8,7 +8,7 @@ const INDENTED_INTERNAL_METHODS: &str = "indented_internal_methods";
 /// Configuration for Layout/IndentationConsistency.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
-pub struct IndentationConsistencyConfig {
+pub struct IndentationConsistency {
     /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
@@ -17,7 +17,7 @@ pub struct IndentationConsistencyConfig {
     pub severity: Severity,
     pub enforced_style: EnforcedStyle,
 }
-impl Default for IndentationConsistencyConfig {
+impl Default for IndentationConsistency {
     fn default() -> Self {
         Self {
             enabled: true,
