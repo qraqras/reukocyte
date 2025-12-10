@@ -52,7 +52,6 @@ pub enum InheritFrom {
     Single(String),
     Multiple(Vec<String>),
 }
-
 impl InheritFrom {
     /// Convert to a list of paths.
     pub fn to_paths(&self) -> Vec<PathBuf> {
@@ -62,7 +61,6 @@ impl InheritFrom {
             InheritFrom::Multiple(v) => v.iter().map(PathBuf::from).collect(),
         }
     }
-
     /// Check if there are any inherited files.
     pub fn is_empty(&self) -> bool {
         match self {
@@ -84,27 +82,21 @@ pub struct AllCopsConfig {
     /// Target Ruby version (e.g., "3.2", "3.3").
     #[serde(default)]
     pub target_ruby_version: Option<String>,
-
     /// Files to exclude from all cops.
     #[serde(default)]
     pub exclude: Vec<String>,
-
     /// Files to include for all cops.
     #[serde(default)]
     pub include: Vec<String>,
-
     /// Whether to use cache.
     #[serde(default)]
     pub use_cache: Option<bool>,
-
     /// Cache root directory.
     #[serde(default)]
     pub cache_root_directory: Option<String>,
-
     /// New cops behavior: enable, disable, or pending.
     #[serde(default)]
     pub new_cops: Option<String>,
-
     /// Suggested extensions.
     #[serde(default)]
     pub suggested_extensions: Option<bool>,
@@ -114,16 +106,8 @@ pub struct AllCopsConfig {
 pub(super) fn merge_all_cops(parent: AllCopsConfig, child: AllCopsConfig) -> AllCopsConfig {
     AllCopsConfig {
         target_ruby_version: child.target_ruby_version.or(parent.target_ruby_version),
-        exclude: if child.exclude.is_empty() {
-            parent.exclude
-        } else {
-            child.exclude
-        },
-        include: if child.include.is_empty() {
-            parent.include
-        } else {
-            child.include
-        },
+        exclude: if child.exclude.is_empty() { parent.exclude } else { child.exclude },
+        include: if child.include.is_empty() { parent.include } else { child.include },
         use_cache: child.use_cache.or(parent.use_cache),
         cache_root_directory: child.cache_root_directory.or(parent.cache_root_directory),
         new_cops: child.new_cops.or(parent.new_cops),

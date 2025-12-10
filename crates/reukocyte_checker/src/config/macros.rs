@@ -1,8 +1,3 @@
-//! Macros for generating cop configuration boilerplate.
-//!
-//! This module defines macros that eliminate repetitive code when adding new cops.
-//! All cop configurations are defined in one place using the `define_cops!` macro.
-
 /// Define all cops and generate:
 /// - `RubocopYaml` struct fields with serde rename attributes
 /// - `from_rubocop_yaml` implementation for Config
@@ -71,6 +66,7 @@ macro_rules! define_cops {
             /// Create a Config from a parsed RubocopYaml.
             pub fn from_rubocop_yaml(yaml: &RubocopYaml) -> Self {
                 super::Config {
+                    all_cops: yaml.all_cops.clone(),
                     layout: super::layout::LayoutConfig {
                         $(
                             $layout_field: yaml.$layout_field.clone(),

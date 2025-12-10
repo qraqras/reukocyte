@@ -53,9 +53,7 @@ fn main() -> ExitCode {
 fn load_config(args: &Args) -> Config {
     if let Some(ref config_path) = args.config {
         match load_rubocop_yaml(config_path) {
-            Ok(yaml) => {
-                Config::from_rubocop_yaml(&yaml)
-            }
+            Ok(yaml) => Config::from_rubocop_yaml(&yaml),
             Err(e) => {
                 eprintln!("Warning: Failed to load config {}: {}", config_path.display(), e);
                 Config::default()
@@ -104,8 +102,8 @@ fn run(args: &Args) -> ExitCode {
     // Load configuration
     let config = load_config(args);
 
-    // Collect all Ruby files from the given paths
-    let files = collect_ruby_files(&args.files);
+    // Collect all Ruby files from the given paths, respecting AllCops.Exclude
+    let files = collect_ruby_files(&args.files, &config.all_cops.exclude);
 
     if files.is_empty() {
         if args.debug {

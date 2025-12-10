@@ -1,15 +1,7 @@
-//! YAML file loader for .rubocop.yml configuration files.
-//!
-//! This module handles:
-//! - Reading and parsing .rubocop.yml files
-//! - Resolving `inherit_from` references
-//! - Merging configurations (child overrides parent)
-
-use std::collections::HashSet;
+use super::yaml::{RubocopYaml, merge_configs};
+use rustc_hash::FxHashSet;
 use std::io;
 use std::path::{Path, PathBuf};
-
-use super::yaml::{RubocopYaml, merge_configs};
 
 /// Error type for configuration loading.
 #[derive(Debug)]
@@ -21,7 +13,6 @@ pub enum LoadError {
     /// Circular inheritance detected.
     CircularInheritance(PathBuf),
 }
-
 impl std::fmt::Display for LoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -33,7 +24,6 @@ impl std::fmt::Display for LoadError {
         }
     }
 }
-
 impl std::error::Error for LoadError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -43,13 +33,11 @@ impl std::error::Error for LoadError {
         }
     }
 }
-
 impl From<io::Error> for LoadError {
     fn from(e: io::Error) -> Self {
         LoadError::Io(e)
     }
 }
-
 impl From<serde_yaml::Error> for LoadError {
     fn from(e: serde_yaml::Error) -> Self {
         LoadError::Yaml(e)
@@ -70,7 +58,7 @@ impl From<serde_yaml::Error> for LoadError {
 /// * `Ok(RubocopYaml)` - The fully resolved configuration
 /// * `Err(LoadError)` - If loading or parsing fails
 pub fn load_rubocop_yaml(path: &Path) -> Result<RubocopYaml, LoadError> {
-    let mut visited = HashSet::new();
+    let mut visited = FxHashSet::default();
     load_with_inheritance(path, &mut visited)
 }
 
@@ -80,10 +68,9 @@ pub fn parse_rubocop_yaml(content: &str) -> Result<RubocopYaml, LoadError> {
 }
 
 /// Internal function that tracks visited files to detect circular inheritance.
-fn load_with_inheritance(path: &Path, visited: &mut HashSet<PathBuf>) -> Result<RubocopYaml, LoadError> {
+fn load_with_inheritance(path: &Path, visited: &mut FxHashSet<PathBuf>) -> Result<RubocopYaml, LoadError> {
     // Canonicalize path to detect circular references
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-
     if visited.contains(&canonical) {
         return Err(LoadError::CircularInheritance(canonical));
     }
@@ -97,7 +84,6 @@ fn load_with_inheritance(path: &Path, visited: &mut HashSet<PathBuf>) -> Result<
     if !config.inherit_from.is_empty() {
         let base_dir = path.parent().unwrap_or(Path::new("."));
         let inherited_paths = config.inherit_from.to_paths();
-
         // Load inherited configs in order and merge
         for inherit_path in inherited_paths {
             let full_path = if inherit_path.is_absolute() {
@@ -105,12 +91,10 @@ fn load_with_inheritance(path: &Path, visited: &mut HashSet<PathBuf>) -> Result<
             } else {
                 base_dir.join(&inherit_path)
             };
-
             // Skip if file doesn't exist (silent ignore)
             if !full_path.exists() {
                 continue;
             }
-
             match load_with_inheritance(&full_path, visited) {
                 Ok(parent_config) => {
                     // Merge: child overrides parent
@@ -123,7 +107,6 @@ fn load_with_inheritance(path: &Path, visited: &mut HashSet<PathBuf>) -> Result<
             }
         }
     }
-
     Ok(config)
 }
 

@@ -12,6 +12,8 @@ pub use yaml::{AllCopsConfig, InheritFrom, RubocopYaml};
 /// The main configuration struct.
 #[derive(Debug, Clone, Default)]
 pub struct Config {
+    /// Global configuration that applies to all cops.
+    pub all_cops: AllCopsConfig,
     /// Layout cop-specific configurations.
     pub layout: layout::LayoutConfig,
     /// Lint cop-specific configurations.
