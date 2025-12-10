@@ -17,7 +17,7 @@ pub use config::{Config, LayoutConfig};
 pub use conflict::ConflictRegistry;
 pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
-pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_with_loop_detection, apply_fixes_with_remaining};
+pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_filtered, apply_fixes_with_loop_detection, apply_fixes_with_remaining};
 pub use locator::LineIndex;
 pub use rule::{Category, Check, LayoutRule, LintRule, Rule, RuleId};
 

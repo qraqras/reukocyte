@@ -3,86 +3,105 @@ use crate::corrector;
 use crate::corrector::Corrector;
 use crate::rule::RuleId;
 use crate::{Diagnostic, check};
-use std::collections::HashSet;
-use std::collections::hash_map::DefaultHasher;
+use rustc_hash::{FxHashSet, FxHasher};
 use std::hash::{Hash, Hasher};
 
 /// Maximum number of iterations to prevent infinite loops.
 /// RuboCop uses 200 as well.
 const MAX_ITERATIONS: usize = 200;
 
-/// Error indicating that the autocorrection loop got stuck.
-#[derive(Debug, Clone)]
-pub struct InfiniteCorrectionLoop {
-    pub path: Option<String>,         // Optional file path
-    pub iteration: usize,             // Current iteration count
-    pub loop_start: Option<usize>,    // Where the loop started, if known
-    pub offending_rules: Vec<String>, // Rules that caused the loop
+/// Detects infinite loops during autocorrection.
+///
+/// Tracks checksums of source code to detect when the same state
+/// is reached again (A -> B -> A pattern).
+struct LoopDetector {
+    path: Option<String>,
+    seen_checksums: Vec<u64>,
+    rules_by_iteration: Vec<FxHashSet<RuleId>>,
 }
-
-impl InfiniteCorrectionLoop {
-    /// Create a new InfiniteCorrectionLoop error.
-    fn new(
-        path: Option<&str>,
-        iteration: usize,
-        loop_start: Option<usize>,
-        rules_by_iteration: &[HashSet<RuleId>],
-    ) -> Self {
-        // Extract the offending rules from the loop iterations
-        let offending_rules = if let Some(start) = loop_start {
-            rules_by_iteration[start..]
-                .iter()
-                .flat_map(|rules| rules.iter().map(|r| r.to_string()))
-                .collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
-        // Deduplicate while preserving order
-        let mut seen = HashSet::new();
-        let offending_rules: Vec<String> = offending_rules
-            .into_iter()
-            .filter(|r| seen.insert(r.clone()))
-            .collect();
+impl LoopDetector {
+    /// Create a new LoopDetector.
+    fn new(path: Option<&str>) -> Self {
         Self {
             path: path.map(|s| s.to_string()),
-            iteration,
-            loop_start,
-            offending_rules,
+            seen_checksums: Vec::new(),
+            rules_by_iteration: Vec::new(),
         }
+    }
+    /// Calculate a checksum for the source code.
+    fn checksum(source: &[u8]) -> u64 {
+        let mut hasher = FxHasher::default();
+        source.hash(&mut hasher);
+        hasher.finish()
+    }
+    /// Check if we've seen this source before (loop detected).
+    /// Returns Err if a loop is detected, Ok(iteration) otherwise.
+    fn check(&mut self, source: &[u8], iteration: usize) -> Result<(), InfiniteCorrectionLoop> {
+        let current_checksum = Self::checksum(source);
+        if let Some(loop_start) = self.seen_checksums.iter().position(|&c| c == current_checksum) {
+            return Err(InfiniteCorrectionLoop {
+                path: self.path.clone(),
+                iteration,
+                loop_start: Some(loop_start),
+                offending_rules: self.extract_offending_rules(loop_start),
+            });
+        }
+        self.seen_checksums.push(current_checksum);
+        Ok(())
+    }
+    /// Record which rules were applied in this iteration.
+    fn record_rules(&mut self, rules: FxHashSet<RuleId>) {
+        self.rules_by_iteration.push(rules);
+    }
+    /// Check if we've exceeded the maximum iterations.
+    fn check_max_iterations(&self) -> Result<(), InfiniteCorrectionLoop> {
+        if self.seen_checksums.len() >= MAX_ITERATIONS {
+            return Err(InfiniteCorrectionLoop {
+                path: self.path.clone(),
+                iteration: MAX_ITERATIONS,
+                loop_start: None,
+                offending_rules: Vec::new(),
+            });
+        }
+        Ok(())
+    }
+    /// Extract offending rules from the loop iterations.
+    fn extract_offending_rules(&self, loop_start: usize) -> Vec<String> {
+        let rules: Vec<String> = self.rules_by_iteration[loop_start..]
+            .iter()
+            .flat_map(|rules| rules.iter().map(|r| r.to_string()))
+            .collect();
+        // Deduplicate while preserving order
+        let mut seen = FxHashSet::default();
+        rules.into_iter().filter(|r| seen.insert(r.clone())).collect()
     }
 }
 
+/// Error indicating that the autocorrection loop got stuck.
+#[derive(Debug, Clone)]
+pub struct InfiniteCorrectionLoop {
+    pub path: Option<String>,
+    pub iteration: usize,
+    pub loop_start: Option<usize>,
+    pub offending_rules: Vec<String>,
+}
 impl std::fmt::Display for InfiniteCorrectionLoop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Infinite loop detected")?;
-
         if let Some(path) = &self.path {
             write!(f, " in {}", path)?;
         }
-
         if !self.offending_rules.is_empty() {
             write!(f, " and caused by {}", self.offending_rules.join(" -> "))?;
         } else if let Some(start) = self.loop_start {
-            write!(
-                f,
-                ": iteration {} produced the same source as iteration {}",
-                self.iteration, start
-            )?;
+            write!(f, ": iteration {} produced the same source as iteration {}", self.iteration, start)?;
         } else {
             write!(f, ": exceeded {} iterations", MAX_ITERATIONS)?;
         }
-
         Ok(())
     }
 }
 impl std::error::Error for InfiniteCorrectionLoop {}
-
-/// Calculate a checksum for the source code.
-fn checksum(source: &[u8]) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    source.hash(&mut hasher);
-    hasher.finish()
-}
 
 /// Apply all fixes from diagnostics to the source code.
 ///
@@ -104,12 +123,7 @@ fn checksum(source: &[u8]) -> u64 {
 /// # Returns
 ///
 /// A tuple of (corrected source, total number of fixes applied)
-pub fn apply_fixes(
-    path: Option<&str>,
-    source: &[u8],
-    diagnostics: &[Diagnostic],
-    unsafe_fixes: bool,
-) -> (Vec<u8>, usize) {
+pub fn apply_fixes(path: Option<&str>, source: &[u8], diagnostics: &[Diagnostic], unsafe_fixes: bool) -> (Vec<u8>, usize) {
     match apply_fixes_with_loop_detection(path, source, diagnostics, unsafe_fixes) {
         Ok((source, count)) => (source, count),
         Err(err) => {
@@ -131,97 +145,91 @@ pub fn apply_fixes_with_loop_detection(
     diagnostics: &[Diagnostic],
     unsafe_fixes: bool,
 ) -> Result<(Vec<u8>, usize), InfiniteCorrectionLoop> {
+    apply_fixes_filtered_with_loop_detection(path, source, diagnostics, unsafe_fixes, |_| true)
+}
+
+/// Apply fixes with a filter function for diagnostics.
+///
+/// This is useful when you want to apply fixes only for specific rules
+/// (e.g., with --only or --except CLI options).
+///
+/// The filter function is applied after each re-check to filter out
+/// diagnostics that should not be fixed.
+pub fn apply_fixes_filtered<F>(path: Option<&str>, source: &[u8], diagnostics: &[Diagnostic], unsafe_fixes: bool, filter: F) -> (Vec<u8>, usize)
+where
+    F: Fn(&Diagnostic) -> bool,
+{
+    match apply_fixes_filtered_with_loop_detection(path, source, diagnostics, unsafe_fixes, filter) {
+        Ok((source, count)) => (source, count),
+        Err(err) => {
+            eprintln!("Warning: {}", err);
+            (source.to_vec(), 0)
+        }
+    }
+}
+
+/// Apply fixes with a filter and infinite loop detection.
+pub fn apply_fixes_filtered_with_loop_detection<F>(
+    path: Option<&str>,
+    source: &[u8],
+    diagnostics: &[Diagnostic],
+    unsafe_fixes: bool,
+    filter: F,
+) -> Result<(Vec<u8>, usize), InfiniteCorrectionLoop>
+where
+    F: Fn(&Diagnostic) -> bool,
+{
     let mut current_source = source.to_vec();
     let mut total_fixed = 0;
-    let mut current_diagnostics = diagnostics.to_vec();
-
-    // Track checksums to detect loops (A -> B -> A pattern)
-    let mut seen_checksums: Vec<u64> = Vec::new();
-
-    // Track which rules were applied in each iteration (for error reporting)
-    let mut rules_by_iteration: Vec<HashSet<RuleId>> = Vec::new();
+    let mut current_diagnostics: Vec<Diagnostic> = diagnostics.iter().filter(|d| filter(d)).cloned().collect();
+    let mut loop_detector = LoopDetector::new(path);
 
     for iteration in 0..MAX_ITERATIONS {
-        // Check for infinite loop via checksum
-        let current_checksum = checksum(&current_source);
-        if let Some(loop_start) = seen_checksums.iter().position(|&c| c == current_checksum) {
-            return Err(InfiniteCorrectionLoop::new(
-                path,
-                iteration,
-                Some(loop_start),
-                &rules_by_iteration,
-            ));
-        }
-        seen_checksums.push(current_checksum);
+        loop_detector.check(&current_source, iteration)?;
 
-        // Create a new Corrector and ConflictRegistry for this iteration
         let mut corrector = Corrector::new();
         let mut conflict_registry = ConflictRegistry::new();
-        let mut applied_rules_this_iteration: HashSet<RuleId> = HashSet::new();
+        let mut applied_rules_this_iteration: FxHashSet<RuleId> = FxHashSet::default();
 
-        // Try to merge all applicable fixes
         for diagnostic in &current_diagnostics {
             if let Some(fix) = &diagnostic.fix {
                 if !corrector::should_apply_fix(fix, unsafe_fixes) {
                     continue;
                 }
-                // Check for rule-level conflicts
                 if conflict_registry.conflicts_with_applied(diagnostic.rule_id) {
-                    // This rule conflicts with an already-applied rule
-                    // Skip it and retry in the next iteration
                     continue;
                 }
-                // Try to merge at edit level; if it conflicts, skip it
                 if corrector.merge(fix).is_ok() {
-                    // Mark this rule as applied for conflict checking
                     conflict_registry.mark_applied(diagnostic.rule_id);
                     applied_rules_this_iteration.insert(diagnostic.rule_id);
                 }
             }
         }
 
-        // Record which rules were applied this iteration
-        rules_by_iteration.push(applied_rules_this_iteration);
+        loop_detector.record_rules(applied_rules_this_iteration);
 
+        // If no fixes were applied, we're done
         if corrector.is_empty() {
-            // No more fixes to apply
             break;
         }
 
-        // Update total fixed count
         total_fixed += corrector.edit_count();
-
-        // Apply the merged edits
         current_source = corrector.apply(&current_source);
 
-        // Re-check to find remaining violations (RuboCop style)
-        current_diagnostics = check(&current_source);
+        // Re-check and apply filter
+        current_diagnostics = check(&current_source).into_iter().filter(|d| filter(d)).collect();
 
         if current_diagnostics.iter().all(|d| d.fix.is_none()) {
-            // No more fixable diagnostics
             break;
         }
     }
 
-    // If we exhausted iterations, that's also a loop
-    if seen_checksums.len() >= MAX_ITERATIONS {
-        return Err(InfiniteCorrectionLoop::new(
-            path,
-            MAX_ITERATIONS,
-            None,
-            &rules_by_iteration,
-        ));
-    }
+    loop_detector.check_max_iterations()?;
     Ok((current_source, total_fixed))
 }
 
 /// Apply fixes and return the result along with remaining diagnostics.
-pub fn apply_fixes_with_remaining(
-    path: Option<&str>,
-    source: &[u8],
-    diagnostics: &[Diagnostic],
-    unsafe_fixes: bool,
-) -> (Vec<u8>, Vec<Diagnostic>, usize) {
+pub fn apply_fixes_with_remaining(path: Option<&str>, source: &[u8], diagnostics: &[Diagnostic], unsafe_fixes: bool) -> (Vec<u8>, Vec<Diagnostic>, usize) {
     let (fixed_source, fix_count) = apply_fixes(path, source, diagnostics, unsafe_fixes);
     // Re-check to get remaining diagnostics
     let remaining = check(&fixed_source);
@@ -293,8 +301,7 @@ mod tests {
         let source = b"def foo  \n  binding.pry\nend\n";
         let diagnostics = check(source);
 
-        let (fixed, remaining, count) =
-            apply_fixes_with_remaining(None, source, &diagnostics, false);
+        let (fixed, remaining, count) = apply_fixes_with_remaining(None, source, &diagnostics, false);
 
         assert_eq!(count, 1);
         assert_eq!(fixed, b"def foo\n  binding.pry\nend\n");
@@ -388,13 +395,13 @@ mod loop_detection_tests {
     fn test_checksum_different_sources() {
         let source1 = b"hello";
         let source2 = b"world";
-        assert_ne!(checksum(source1), checksum(source2));
+        assert_ne!(LoopDetector::checksum(source1), LoopDetector::checksum(source2));
     }
 
     #[test]
     fn test_checksum_same_source() {
         let source = b"hello world";
-        assert_eq!(checksum(source), checksum(source));
+        assert_eq!(LoopDetector::checksum(source), LoopDetector::checksum(source));
     }
 
     #[test]
@@ -403,10 +410,7 @@ mod loop_detection_tests {
             path: Some("example.rb".to_string()),
             iteration: 5,
             loop_start: Some(2),
-            offending_rules: vec![
-                "Layout/TrailingWhitespace".to_string(),
-                "Lint/Debugger".to_string(),
-            ],
+            offending_rules: vec!["Layout/TrailingWhitespace".to_string(), "Lint/Debugger".to_string()],
         };
         let msg = err.to_string();
         assert!(msg.contains("example.rb"));

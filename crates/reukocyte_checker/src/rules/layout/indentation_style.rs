@@ -29,14 +29,7 @@ pub fn check(checker: &mut Checker) {
     let edit_ranges = collect_edit_ranges(checker.source());
     for (start, end, replacement) in edit_ranges {
         let fix = Fix::safe(vec![Edit::replacement(start, end, replacement)]);
-        checker.report(
-            RULE_ID,
-            "Tab detected in indentation.".to_string(),
-            Severity::Convention,
-            start,
-            end,
-            Some(fix),
-        );
+        checker.report(RULE_ID, "Tab detected in indentation.".to_string(), Severity::Convention, start, end, Some(fix));
     }
 }
 

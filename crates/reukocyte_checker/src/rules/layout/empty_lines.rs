@@ -36,14 +36,7 @@ pub fn check(checker: &mut Checker) {
     for (start, end, message) in edit_ranges {
         // Fix: remove extra blank lines, keeping just one
         let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-        checker.report(
-            RULE_ID,
-            message,
-            Severity::Convention,
-            start,
-            end,
-            Some(fix),
-        );
+        checker.report(RULE_ID, message, Severity::Convention, start, end, Some(fix));
     }
 }
 
@@ -69,9 +62,7 @@ fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize, String)> {
                 // We had 2+ consecutive empty lines
                 // Keep one empty line, delete the rest
                 // The range to delete starts after the first empty line
-                let first_empty_end = find_first_newline_after(source, empty_start)
-                    .map(|pos| pos + 1)
-                    .unwrap_or(empty_start);
+                let first_empty_end = find_first_newline_after(source, empty_start).map(|pos| pos + 1).unwrap_or(empty_start);
 
                 let extra_lines = consecutive_empty - 1;
                 let message = format!("Extra blank line detected.");

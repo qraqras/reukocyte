@@ -7,109 +7,29 @@
 
 ## 直近のタスク
 このプロジェクトの直近のタスクは以下の通りです:
-- EndAlignmentの実装を見直し
+- CLIの実装
+  ```
+  rueko [OPTIONS] [FILES...]
+
+  Options:
+    -a, --autocorrect          安全な自動修正
+    -A, --autocorrect-all      全ての自動修正
+    -x, --fix-layout           Layoutのみ自動修正
+    -l, --lint                 Lintのみ実行
+    -c, --config <FILE>        設定ファイル
+    -f, --format <FORMAT>      出力形式 [progress, json, simple]
+    -o, --out <FILE>           ファイル出力
+    -s, --stdin <FILE>         標準入力から読み込み
+        --only <COPS>          指定Copのみ
+        --except <COPS>        指定Copを除外
+    -F, --fail-fast            最初のエラーで停止
+        --fail-level <LEVEL>   終了コードの閾値
+        --color / --no-color   カラー出力
+    -v, --version              バージョン表示
+    -h, --help                 ヘルプ表示
+  ```
+- .rubocop.yml対応
 - Layoutの実装
-  - [ ] Layout/AccessModifierIndentation
-  - [ ] Layout/ArgumentAlignment
-  - [ ] Layout/ArrayAlignment
-  - [ ] Layout/AssignmentIndentation
-  - [ ] Layout/BeginEndAlignment
-  - [ ] Layout/BlockAlignment
-  - [ ] Layout/BlockEndNewline
-  - [ ] Layout/CaseIndentation
-  - [ ] Layout/ClassStructure
-  - [ ] Layout/ClosingHeredocIndentation
-  - [ ] Layout/ClosingParenthesisIndentation
-  - [ ] Layout/CommentIndentation
-  - [ ] Layout/ConditionPosition
-  - [ ] Layout/DefEndAlignment
-  - [ ] Layout/DotPosition
-  - [ ] Layout/ElseAlignment
-  - [ ] Layout/EmptyComment
-  - [ ] Layout/EmptyLineAfterGuardClause
-  - [ ] Layout/EmptyLineAfterMagicComment
-  - [ ] Layout/EmptyLineAfterMultilineCondition
-  - [ ] Layout/EmptyLineBetweenDefs
-  - [ ] Layout/EmptyLines
-  - [ ] Layout/EmptyLinesAfterModuleInclusion
-  - [ ] Layout/EmptyLinesAroundAccessModifier
-  - [ ] Layout/EmptyLinesAroundArguments
-  - [ ] Layout/EmptyLinesAroundAttributeAccessor
-  - [ ] Layout/EmptyLinesAroundBeginBody
-  - [ ] Layout/EmptyLinesAroundBlockBody
-  - [ ] Layout/EmptyLinesAroundClassBody
-  - [ ] Layout/EmptyLinesAroundExceptionHandlingKeywords
-  - [ ] Layout/EmptyLinesAroundMethodBody
-  - [ ] Layout/EmptyLinesAroundModuleBody
-  - [ ] Layout/EndAlignment
-  - [ ] Layout/EndOfLine
-  - [ ] Layout/ExtraSpacing
-  - [ ] Layout/FirstArgumentIndentation
-  - [ ] Layout/FirstArrayElementIndentation
-  - [ ] Layout/FirstArrayElementLineBreak
-  - [ ] Layout/FirstHashElementIndentation
-  - [ ] Layout/FirstHashElementLineBreak
-  - [ ] Layout/FirstMethodArgumentLineBreak
-  - [ ] Layout/FirstMethodParameterLineBreak
-  - [ ] Layout/FirstParameterIndentation
-  - [ ] Layout/HashAlignment
-  - [ ] Layout/HeredocArgumentClosingParenthesis
-  - [ ] Layout/HeredocIndentation
-  - [ ] Layout/IndentationConsistency
-  - [ ] Layout/IndentationStyle
-  - [ x ] Layout/IndentationWidth
-  - [ ] Layout/InitialIndentation
-  - [ ] Layout/LeadingCommentSpace
-  - [ ] Layout/LeadingEmptyLines
-  - [ ] Layout/LineContinuationLeadingSpace
-  - [ ] Layout/LineContinuationSpacing
-  - [ ] Layout/LineEndStringConcatenationIndentation
-  - [ ] Layout/LineLength
-  - [ ] Layout/MultilineArrayBraceLayout
-  - [ ] Layout/MultilineArrayLineBreaks
-  - [ ] Layout/MultilineAssignmentLayout
-  - [ ] Layout/MultilineBlockLayout
-  - [ ] Layout/MultilineHashBraceLayout
-  - [ ] Layout/MultilineHashKeyLineBreaks
-  - [ ] Layout/MultilineMethodArgumentLineBreaks
-  - [ ] Layout/MultilineMethodCallBraceLayout
-  - [ ] Layout/MultilineMethodCallIndentation
-  - [ ] Layout/MultilineMethodDefinitionBraceLayout
-  - [ ] Layout/MultilineMethodParameterLineBreaks
-  - [ ] Layout/MultilineOperationIndentation
-  - [ ] Layout/ParameterAlignment
-  - [ ] Layout/RedundantLineBreak
-  - [ ] Layout/RescueEnsureAlignment
-  - [ ] Layout/SingleLineBlockChain
-  - [ ] Layout/SpaceAfterColon
-  - [ ] Layout/SpaceAfterComma
-  - [ ] Layout/SpaceAfterMethodName
-  - [ ] Layout/SpaceAfterNot
-  - [ ] Layout/SpaceAfterSemicolon
-  - [ ] Layout/SpaceAroundBlockParameters
-  - [ ] Layout/SpaceAroundEqualsInParameterDefault
-  - [ ] Layout/SpaceAroundKeyword
-  - [ ] Layout/SpaceAroundMethodCallOperator
-  - [ ] Layout/SpaceAroundOperators
-  - [ ] Layout/SpaceBeforeBlockBraces
-  - [ ] Layout/SpaceBeforeBrackets
-  - [ ] Layout/SpaceBeforeComma
-  - [ ] Layout/SpaceBeforeComment
-  - [ ] Layout/SpaceBeforeFirstArg
-  - [ ] Layout/SpaceBeforeSemicolon
-  - [ ] Layout/SpaceInLambdaLiteral
-  - [ ] Layout/SpaceInsideArrayLiteralBrackets
-  - [ ] Layout/SpaceInsideArrayPercentLiteral
-  - [ ] Layout/SpaceInsideBlockBraces
-  - [ ] Layout/SpaceInsideHashLiteralBraces
-  - [ ] Layout/SpaceInsideParens
-  - [ ] Layout/SpaceInsidePercentLiteralDelimiters
-  - [ ] Layout/SpaceInsideRangeLiteral
-  - [ ] Layout/SpaceInsideReferenceBrackets
-  - [ ] Layout/SpaceInsideStringInterpolation
-  - [ ] Layout/TrailingEmptyLines
-  - [ x ] Layout/TrailingWhitespace
-  - [ ] AllowMultilineFinalElement
 
 ## プロジェクトの全体像
 ### プロジェクト概要

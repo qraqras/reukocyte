@@ -1,6 +1,5 @@
-use ruby_prism::Node;
-
 use crate::custom_nodes::ConditionalNode;
+use ruby_prism::Node;
 
 pub fn is_assignment(node: &Node) -> bool {
     match node {
