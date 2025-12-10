@@ -37,16 +37,16 @@ echo ""
 # Test 1: JSON output format compatibility
 test_json_format() {
     echo -n "Test: JSON output format... "
-    
+
     local test_file="$TMP_DIR/test_json.rb"
     echo 'x = 1  ' > "$test_file"  # trailing whitespace
-    
+
     # Get RuboCop JSON output
     local rubocop_json=$(rubocop -f json "$test_file" 2>/dev/null || true)
-    
-    # Get rueko JSON output  
+
+    # Get rueko JSON output
     local rueko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
-    
+
     # Check that both have required fields
     if echo "$rueko_json" | grep -q '"metadata"' && \
        echo "$rueko_json" | grep -q '"files"' && \
@@ -64,16 +64,16 @@ test_json_format() {
 # Test 2: Layout/TrailingWhitespace detection
 test_trailing_whitespace() {
     echo -n "Test: Layout/TrailingWhitespace detection... "
-    
+
     local test_file="$TMP_DIR/test_tw.rb"
     printf 'x = 1  \ny = 2\nz = 3   \n' > "$test_file"
-    
+
     # Count RuboCop offenses
     local rubocop_count=$(rubocop --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Layout/TrailingWhitespace"' | wc -l)
-    
+
     # Count rueko offenses
     local rueko_count=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Layout/TrailingWhitespace"' | wc -l)
-    
+
     if [ "$rubocop_count" = "$rueko_count" ]; then
         echo -e "${GREEN}PASSED${NC} (both found $rubocop_count offense(s))"
         ((PASSED++))
@@ -87,18 +87,18 @@ test_trailing_whitespace() {
 # Test 3: Layout/TrailingWhitespace autocorrect
 test_trailing_whitespace_fix() {
     echo -n "Test: Layout/TrailingWhitespace autocorrect... "
-    
+
     local rubocop_file="$TMP_DIR/test_tw_rubocop.rb"
     local rueko_file="$TMP_DIR/test_tw_rueko.rb"
     printf 'x = 1  \ny = 2\nz = 3   \n' > "$rubocop_file"
     printf 'x = 1  \ny = 2\nz = 3   \n' > "$rueko_file"
-    
+
     # Fix with RuboCop
     rubocop -a --only Layout/TrailingWhitespace "$rubocop_file" >/dev/null 2>&1 || true
-    
+
     # Fix with rueko
     "$RUEKO" -a --only Layout/TrailingWhitespace "$rueko_file" >/dev/null 2>&1 || true
-    
+
     # Compare results
     if diff -q "$rubocop_file" "$rueko_file" >/dev/null 2>&1; then
         echo -e "${GREEN}PASSED${NC}"
@@ -114,7 +114,7 @@ test_trailing_whitespace_fix() {
 # Test 4: Lint/Debugger detection
 test_debugger_detection() {
     echo -n "Test: Lint/Debugger detection... "
-    
+
     local test_file="$TMP_DIR/test_debugger.rb"
     cat > "$test_file" << 'EOF'
 def foo
@@ -124,13 +124,13 @@ def foo
   y = 2
 end
 EOF
-    
+
     # Count RuboCop offenses
     local rubocop_count=$(rubocop --only Lint/Debugger -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Lint/Debugger"' | wc -l)
-    
+
     # Count rueko offenses
     local rueko_count=$("$RUEKO" --only Lint/Debugger -f json "$test_file" 2>/dev/null | grep -o '"cop_name":"Lint/Debugger"' | wc -l)
-    
+
     if [ "$rubocop_count" = "$rueko_count" ]; then
         echo -e "${GREEN}PASSED${NC} (both found $rubocop_count offense(s))"
         ((PASSED++))
@@ -144,10 +144,10 @@ EOF
 # Test 5: File collection (Ruby file patterns)
 test_file_collection() {
     echo -n "Test: Ruby file pattern detection... "
-    
+
     local test_dir="$TMP_DIR/file_patterns"
     mkdir -p "$test_dir"
-    
+
     # Create various Ruby files
     echo 'x = 1' > "$test_dir/test.rb"
     echo 'x = 1' > "$test_dir/Gemfile"
@@ -155,13 +155,13 @@ test_file_collection() {
     echo 'x = 1' > "$test_dir/config.ru"
     echo 'x = 1' > "$test_dir/test.rake"
     echo 'x = 1' > "$test_dir/not_ruby.txt"
-    
+
     # Count files RuboCop inspects
     local rubocop_files=$(rubocop -f json "$test_dir" 2>/dev/null | grep -o '"path":' | wc -l)
-    
+
     # Count files rueko inspects
     local rueko_files=$("$RUEKO" -f json "$test_dir" 2>/dev/null | grep -o '"path":' | wc -l)
-    
+
     if [ "$rubocop_files" = "$rueko_files" ]; then
         echo -e "${GREEN}PASSED${NC} (both inspected $rubocop_files file(s))"
         ((PASSED++))
@@ -175,13 +175,13 @@ test_file_collection() {
 # Test 6: Offense location format
 test_offense_location() {
     echo -n "Test: Offense location format... "
-    
+
     local test_file="$TMP_DIR/test_location.rb"
     echo 'x = 1  ' > "$test_file"
-    
+
     # Get rueko JSON and check location fields
     local rueko_json=$("$RUEKO" --only Layout/TrailingWhitespace -f json "$test_file" 2>/dev/null || true)
-    
+
     if echo "$rueko_json" | grep -q '"start_line"' && \
        echo "$rueko_json" | grep -q '"start_column"' && \
        echo "$rueko_json" | grep -q '"last_line"' && \
@@ -199,12 +199,12 @@ test_offense_location() {
 # Test 7: Severity levels
 test_severity_levels() {
     echo -n "Test: Severity level format... "
-    
+
     local test_file="$TMP_DIR/test_severity.rb"
     echo 'x = 1  ' > "$test_file"
-    
+
     local rueko_json=$("$RUEKO" -f json "$test_file" 2>/dev/null || true)
-    
+
     # Check severity is a valid RuboCop severity
     if echo "$rueko_json" | grep -qE '"severity":"(info|refactor|convention|warning|error|fatal)"'; then
         echo -e "${GREEN}PASSED${NC}"
@@ -219,17 +219,17 @@ test_severity_levels() {
 # Test 8: Empty file handling
 test_empty_file() {
     echo -n "Test: Empty file handling... "
-    
+
     local test_file="$TMP_DIR/empty.rb"
     touch "$test_file"
-    
+
     # Both should handle empty files without error
     local rubocop_exit=0
     local rueko_exit=0
-    
+
     rubocop -f json "$test_file" >/dev/null 2>&1 || rubocop_exit=$?
     "$RUEKO" -f json "$test_file" >/dev/null 2>&1 || rueko_exit=$?
-    
+
     # Both should succeed (exit 0) for empty files
     if [ "$rueko_exit" = "0" ]; then
         echo -e "${GREEN}PASSED${NC}"

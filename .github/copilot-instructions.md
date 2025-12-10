@@ -7,27 +7,6 @@
 
 ## 直近のタスク
 このプロジェクトの直近のタスクは以下の通りです:
-- CLIの実装
-  ```
-  rueko [OPTIONS] [FILES...]
-
-  Options:
-    -a, --autocorrect          安全な自動修正
-    -A, --autocorrect-all      全ての自動修正
-    -x, --fix-layout           Layoutのみ自動修正
-    -l, --lint                 Lintのみ実行
-    -c, --config <FILE>        設定ファイル
-    -f, --format <FORMAT>      出力形式 [progress, json, simple]
-    -o, --out <FILE>           ファイル出力
-    -s, --stdin <FILE>         標準入力から読み込み
-        --only <COPS>          指定Copのみ
-        --except <COPS>        指定Copを除外
-    -F, --fail-fast            最初のエラーで停止
-        --fail-level <LEVEL>   終了コードの閾値
-        --color / --no-color   カラー出力
-    -v, --version              バージョン表示
-    -h, --help                 ヘルプ表示
-  ```
 - .rubocop.yml対応
 - Layoutの実装
 

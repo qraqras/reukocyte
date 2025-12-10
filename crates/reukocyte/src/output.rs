@@ -116,9 +116,9 @@ impl JsonOutput {
         }
     }
 
-    /// Serialize to JSON string.
+    /// Serialize to JSON string (compact format, RuboCop-compatible).
     pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
+        serde_json::to_string(self).unwrap_or_else(|_| "{}".to_string())
     }
 }
 

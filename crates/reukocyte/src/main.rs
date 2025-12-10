@@ -91,11 +91,10 @@ fn run(args: &Args) -> ExitCode {
                 total_remaining += remaining.len();
                 total_fixed += fixed_count;
 
-                if !remaining.is_empty() || fixed_count > 0 {
-                    file_results.insert(path_str.clone(), remaining);
-                    if fixed_count > 0 {
-                        corrected_counts.insert(path_str, fixed_count);
-                    }
+                // Always include files in results (RuboCop-compatible)
+                file_results.insert(path_str.clone(), remaining);
+                if fixed_count > 0 {
+                    corrected_counts.insert(path_str, fixed_count);
                 }
 
                 // Handle fail-fast
