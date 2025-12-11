@@ -99,3 +99,12 @@ fn is_non_bare_access_modifier_declaration(node_id: &NodeId, checker: &Checker) 
         None => false,
     })
 }
+
+/// Fast syntax-only check whether a call node is *syntactically* an access modifier
+/// (no semantic lookup, pure AST check). This helps avoid expensive semantic lookups
+/// when a call node does not even look like an access modifier.
+pub fn is_call_access_modifier_syntax(call_node: &CallNode) -> bool {
+    let name = call_node.name().as_slice();
+    call_node.receiver().is_none() && call_node.arguments().is_none()
+        && (name == PUBLIC || name == PROTECTED || name == PRIVATE || name == MODULE_FUNCTION)
+}

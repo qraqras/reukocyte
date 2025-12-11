@@ -65,7 +65,7 @@ macro_rules! define_cops {
         impl super::Config {
             /// Create a Config from a parsed RubocopYaml.
             pub fn from_rubocop_yaml(yaml: &RubocopYaml) -> Self {
-                super::Config {
+                let mut cfg = super::Config {
                     all_cops: yaml.all_cops.clone(),
                     layout: super::layout::LayoutConfig {
                         $(
@@ -77,7 +77,16 @@ macro_rules! define_cops {
                             $lint_field: yaml.$lint_field.clone(),
                         )*
                     },
-                }
+                };
+                // Compile all AllCops and BaseCopConfig globsets to accelerate matches
+                cfg.all_cops.compile_globs();
+                $(
+                    cfg.layout.$layout_field.base.compile_globs();
+                )*
+                $(
+                    cfg.lint.$lint_field.base.compile_globs();
+                )*
+                cfg
             }
         }
 

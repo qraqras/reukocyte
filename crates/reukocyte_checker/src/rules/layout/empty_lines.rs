@@ -42,7 +42,7 @@ impl Check<Line<'_>> for EmptyLines {
         if !config.base.enabled {
             return;
         }
-        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        if !checker.should_run_cop_cached("layout.empty_lines", &config.base) {
             return;
         }
         let severity = config.base.severity;

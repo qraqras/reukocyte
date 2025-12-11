@@ -6,7 +6,7 @@
 /// # Examples
 ///
 /// ```
-/// use reukocyte_checker::utils::is_blank;
+/// use reukocyte_checker::utility::source::is_blank;
 ///
 /// assert!(is_blank(' '));
 /// assert!(is_blank('\t'));

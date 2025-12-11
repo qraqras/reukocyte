@@ -31,6 +31,23 @@
 ### Medium File (40KB, 1000 methods)
 
 ```
+## Profiling Rules and Phases
+
+You can enable diagnostics about profiling phases and per-rule runtimes using environment variables:
+
+- `RUEKO_PROFILE_PHASES=1` — prints high-level phase timings (parse/build_index/visit_nodes/visit_lines/etc.)
+- `RUEKO_PROFILE_RULES=1` — prints per-rule aggregated timing (rule_name,total_us,count,avg_us,pct_of_visit_nodes)
+- `RUEKO_PROFILE_RULE_SUBPHASES=1` — prints subphase timing for expensive rules (e.g., IndentationConsistency)
+
+Example:
+```bash
+RUEKO_PROFILE_PHASES=1 RUEKO_PROFILE_RULES=1 target/release/reuko --only Layout/IndentationConsistency tmp/bench/large.rb
+```
+
+The `RUEKO_PROFILE_RULES` output is CSV-like with columns:
+`rule_name,total_us,count,avg_us,pct_of_visit_nodes`
+where `pct_of_visit_nodes` expresses the rule's cumulative time as a percentage of the `visit_nodes` phase time.
+
 Benchmark 1: target/release/reuko tmp/bench/medium.rb
   Time (mean ± σ):       1.9 ms ±   0.3 ms
   Range (min … max):     1.6 ms …   3.0 ms

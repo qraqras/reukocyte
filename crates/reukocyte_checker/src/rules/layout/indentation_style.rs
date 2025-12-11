@@ -37,7 +37,7 @@ impl Check<Line<'_>> for IndentationStyle {
         if !config.base.enabled {
             return;
         }
-        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        if !checker.should_run_cop_cached("layout.indentation_style", &config.base) {
             return;
         }
         let severity = config.base.severity;

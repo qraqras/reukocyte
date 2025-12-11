@@ -8,22 +8,18 @@ mod fix;
 mod locator;
 mod rule;
 mod semantic;
-mod utility;
+pub mod utility;
 
 pub mod rules;
 
 pub use checker::Checker;
-pub use config::{
-    load_rubocop_yaml, parse_rubocop_yaml, AllCopsConfig, Config,
-    InheritFrom, LayoutConfig, LoadError, RubocopYaml,
-};
+pub use config::{AllCopsConfig, Config, InheritFrom, LayoutConfig, LoadError, RubocopYaml, load_rubocop_yaml, parse_rubocop_yaml};
 pub use conflict::ConflictRegistry;
 pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
 pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_filtered, apply_fixes_with_loop_detection, apply_fixes_with_remaining};
 pub use locator::LineIndex;
 pub use rule::{Category, Check, LayoutRule, LintRule, Rule, RuleId};
-
 
 /// Check a Ruby source file for violations with default configuration.
 ///
@@ -43,24 +39,12 @@ pub fn check_with_config(source: &[u8], config: &Config) -> Vec<Diagnostic> {
 /// Check a Ruby source file for violations with custom configuration and file path.
 ///
 /// The file path is used for cop-specific Exclude pattern matching.
-pub fn check_with_config_and_path(
-    source: &[u8],
-    config: &Config,
-    file_path: Option<&str>,
-) -> Vec<Diagnostic> {
-    use std::time::Instant;
+pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Option<&str>) -> Vec<Diagnostic> {
     use std::env;
+    use std::time::Instant;
 
     let profile_phases = env::var("RUEKO_PROFILE_PHASES").is_ok();
     let profile_t0 = if profile_phases { Some(Instant::now()) } else { None };
-
-    let parse_start = if profile_phases { Some(Instant::now()) } else { None };
-    let parse_result = ruby_prism::parse(source);
-    if profile_phases {
-        if let Some(dur) = parse_start.map(|s| s.elapsed()) {
-            eprintln!("[phase] parse: {} ms", dur.as_millis());
-        }
-    }
 
     let mut checker = if let Some(path) = file_path {
         Checker::with_file_path(source, config, path)
@@ -68,36 +52,62 @@ pub fn check_with_config_and_path(
         Checker::new(source, config)
     };
 
+    // Decide whether to parse based on which rule categories are enabled.
+    // If any AST/token based rules are enabled, we need to parse; otherwise skip.
+    let needs_parse = checker.needs_ast.get() || checker.needs_tokens.get();
+    let parse_result = if needs_parse {
+        let parse_start = if profile_phases { Some(Instant::now()) } else { None };
+        let res = ruby_prism::parse(source);
+        if profile_phases {
+            if let Some(dur) = parse_start.map(|s| s.elapsed()) {
+                eprintln!("[phase] parse: {} ms", dur.as_millis());
+            }
+        }
+        Some(res)
+    } else {
+        None
+    };
+
     // Phase 1: Build node index (pre-index all nodes before rules run)
-    let build_index_start = if profile_phases { Some(Instant::now()) } else { None };
-    checker.build_index(&parse_result.node());
-    if profile_phases {
-        if let Some(dur) = build_index_start.map(|s| s.elapsed()) {
-            eprintln!("[phase] build_index: {} ms", dur.as_millis());
+    if let Some(ref parse_result) = parse_result {
+        let build_index_start = if profile_phases { Some(Instant::now()) } else { None };
+        checker.build_index(&parse_result.node());
+        if profile_phases {
+            if let Some(dur) = build_index_start.map(|s| s.elapsed()) {
+                eprintln!("[phase] build_index: {} ms", dur.as_millis());
+            }
         }
     }
 
     // Phase 2: Run AST-based rules (single traversal)
-    let visit_nodes_start = if profile_phases { Some(Instant::now()) } else { None };
-    checker.visit_nodes(&parse_result.node());
-    if profile_phases {
-        if let Some(dur) = visit_nodes_start.map(|s| s.elapsed()) {
-            eprintln!("[phase] visit_nodes: {} ms", dur.as_millis());
+    if checker.needs_ast.get() {
+        if let Some(ref parse_result) = parse_result {
+            let visit_nodes_start = if profile_phases { Some(Instant::now()) } else { None };
+            checker.visit_nodes(&parse_result.node());
+            if profile_phases {
+                if let Some(dur) = visit_nodes_start.map(|s| s.elapsed()) {
+                    eprintln!("[phase] visit_nodes: {} ms", dur.as_millis());
+                }
+            }
         }
     }
 
     // Phase 3: Run line-based rules (after AST, can use collected info)
-    let visit_lines_start = if profile_phases { Some(Instant::now()) } else { None };
-    checker.visit_lines();
-    if profile_phases {
-        if let Some(dur) = visit_lines_start.map(|s| s.elapsed()) {
-            eprintln!("[phase] visit_lines: {} ms", dur.as_millis());
+    if checker.needs_lines.get() {
+        let visit_lines_start = if profile_phases { Some(Instant::now()) } else { None };
+        checker.visit_lines();
+        if profile_phases {
+            if let Some(dur) = visit_lines_start.map(|s| s.elapsed()) {
+                eprintln!("[phase] visit_lines: {} ms", dur.as_millis());
+            }
         }
     }
 
     // Some layout checks need file-level analysis; keep them executed explicitly
     let trailing_start = if profile_phases { Some(Instant::now()) } else { None };
-    rules::layout::trailing_empty_lines::check(&mut checker);
+    if checker.needs_file.get() {
+        checker.run_file_rules();
+    }
     if profile_phases {
         if let Some(dur) = trailing_start.map(|s| s.elapsed()) {
             eprintln!("[phase] trailing_empty_lines: {} ms", dur.as_millis());
@@ -130,8 +140,13 @@ pub fn check_with_config_and_path(
         match crate::rules::layout::indentation_consistency::__REUKO_INDENTCONS_SUB_REGISTRY.get() {
             Some(reg) => {
                 let r = reg.lock().unwrap();
-                eprintln!("[rule_subphase] layout::indentation_consistency::IndentationConsistency,total_us,count,collect_us,alignment_us,offsets_us,batch_us,iter_us,fix_creation_us,report_us,conflict_us");
-                eprintln!("[rule_subphase] layout::indentation_consistency::IndentationConsistency,{},{},{},{},{},{},{},{},{},{}", r.total_us, r.count, r.collect_us, r.align_us, r.offsets_us, r.batch_us, r.iter_us, r.fix_creation_us, r.report_us, r.conflict_us);
+                eprintln!(
+                    "[rule_subphase] layout::indentation_consistency::IndentationConsistency,total_us,count,collect_us,alignment_us,offsets_us,batch_us,iter_us,fix_creation_us,report_us,conflict_us"
+                );
+                eprintln!(
+                    "[rule_subphase] layout::indentation_consistency::IndentationConsistency,{},{},{},{},{},{},{},{},{},{}",
+                    r.total_us, r.count, r.collect_us, r.align_us, r.offsets_us, r.batch_us, r.iter_us, r.fix_creation_us, r.report_us, r.conflict_us
+                );
             }
             None => {
                 eprintln!("[dbg] indentation_consistency sub-registry not initialized");
@@ -162,7 +177,7 @@ mod tests {
     fn test_check_trailing_whitespace() {
         let source = b"def foo  \n  bar\nend\n";
         let diagnostics = check(source);
-        
+
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
     }
@@ -183,5 +198,17 @@ mod tests {
         // Should be sorted by line/column
         assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
         assert_eq!(diagnostics[1].rule(), "Lint/Debugger");
+    }
+
+    #[test]
+    fn test_should_run_with_compiled_base_glob() {
+        let mut cfg = Config::default();
+        // Set an include that does not match the file path
+        cfg.layout.trailing_whitespace.base.include = vec!["spec/**/*".to_string()];
+        // Compile globs as loader would
+        cfg.layout.trailing_whitespace.base.compile_globs();
+        let checker = Checker::with_file_path(b"def x\nend\n", &cfg, "lib/foo.rb");
+        // The include only matches spec/** so this file should not be included
+        assert!(!checker.should_run_cop(&cfg.layout.trailing_whitespace.base));
     }
 }

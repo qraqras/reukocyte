@@ -34,7 +34,10 @@ impl Check<Line<'_>> for LeadingEmptyLines {
     fn check(line: &Line, checker: &mut Checker) {
         let config = &checker.config().layout.leading_empty_lines;
         if !config.base.enabled { return; }
-        if !checker.should_run_cop(&config.base.include, &config.base.exclude) { return; }
+        // The generated macro already guards checks when invoked via `run_line_rules!`.
+        // Use the cached `should_run_cop_cached` here for consistency and speed
+        // (also covers direct invocations such as explicit file-level calls).
+        if !checker.should_run_cop_cached("layout.leading_empty_lines", &config.base) { return; }
         let severity = config.base.severity;
 
         // Trigger only when we encounter the first non-empty line.

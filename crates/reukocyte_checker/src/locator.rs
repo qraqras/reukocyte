@@ -4,6 +4,8 @@ use crate::rule::Line as RuleLine;
 #[derive(Debug, Clone)]
 pub struct LineIndex<'rk> {
     lines: Vec<RuleLine<'rk>>,
+    stride: usize, // Number of lines per stride group
+    stride_starts: Vec<usize>, // Start offsets for each stride group
 }
 impl<'rk> LineIndex<'rk> {
     /// Build a LineIndex from source bytes.
@@ -30,14 +32,31 @@ impl<'rk> LineIndex<'rk> {
             lines.push(RuleLine { index: i, start, end, text, indent });
         }
 
-        Self { lines }
+        // Build stride index (e.g., every 64 lines)
+        const STRIDE_SIZE: usize = 64;
+        let mut stride_starts = Vec::new();
+        for i in (0..lines.len()).step_by(STRIDE_SIZE) {
+            stride_starts.push(lines[i].start);
+        }
+
+        Self { lines, stride: STRIDE_SIZE, stride_starts }
     }
     /// Get the line index (0-indexed) for a byte offset.
     pub fn line_index(&self, offset: usize) -> usize {
-        match self.lines.binary_search_by_key(&offset, |l| l.start) {
-            Ok(line) => line,
-            Err(line) => line.saturating_sub(1),
+        // Use stride index for initial guess
+        let stride_idx = match self.stride_starts.binary_search(&offset) {
+            Ok(idx) => idx,
+            Err(idx) => idx.saturating_sub(1),
+        };
+        let mut guess = stride_idx * self.stride;
+        if guess >= self.lines.len() {
+            guess = self.lines.len().saturating_sub(1);
         }
+        // Linear search within the stride group
+        while guess + 1 < self.lines.len() && self.lines[guess + 1].start <= offset {
+            guess += 1;
+        }
+        guess
     }
     /// Get the line number (1-indexed) for a byte offset.
     pub fn line_number(&self, offset: usize) -> usize {
@@ -108,22 +127,31 @@ impl<'rk> LineIndex<'rk> {
         let mut results = Vec::with_capacity(offsets.len());
         let mut current_line_idx = if !offsets.is_empty() { self.line_index(offsets[0].0) } else { 0 };
         let line_count = self.lines.len();
+        let lines = &self.lines;
 
         for &(start, end) in offsets {
             // Advance to the correct line for start offset
-            while current_line_idx + 1 < line_count && self.lines[current_line_idx + 1].start <= start {
+            while current_line_idx + 1 < line_count && lines[current_line_idx + 1].start <= start {
                 current_line_idx += 1;
             }
-            let line_start_offset = self.lines[current_line_idx].start;
+            let line_start_offset = lines[current_line_idx].start;
             let line_start = current_line_idx + 1;
             let column_start = start - line_start_offset + 1;
 
             // Find line for end offset (usually same line or close)
             let mut end_line_idx = current_line_idx;
-            while end_line_idx + 1 < line_count && self.lines[end_line_idx + 1].start <= end {
-                end_line_idx += 1;
+            // Fast path: if end is before the next line start, remain on same line
+            if end >= lines[end_line_idx].start {
+                if end_line_idx + 1 < line_count {
+                    let next_start = lines[end_line_idx + 1].start;
+                    if end >= next_start {
+                        while end_line_idx + 1 < line_count && lines[end_line_idx + 1].start <= end {
+                            end_line_idx += 1;
+                        }
+                    }
+                }
             }
-            let end_line_start_offset = self.lines[end_line_idx].start;
+            let end_line_start_offset = lines[end_line_idx].start;
             let line_end = end_line_idx + 1;
             let column_end = end - end_line_start_offset + 1;
 
@@ -140,6 +168,7 @@ impl<'rk> LineIndex<'rk> {
     pub fn batch_line_info(&self, offsets: &[(usize, usize)]) -> Vec<(usize, usize, usize, usize, usize)> {
         let mut results = Vec::with_capacity(offsets.len());
         let line_count = self.lines.len();
+        let lines = &self.lines;
         // Start from the line index for the first offset to avoid scanning from 0
         let mut current_line_idx = if !offsets.is_empty() { self.line_index(offsets[0].0) } else { 0usize };
         // cache the indentation for the current_line_idx
@@ -156,8 +185,16 @@ impl<'rk> LineIndex<'rk> {
             let column_start = start - line_start_offset + 1;
 
             let mut end_line_idx = current_line_idx;
-            while end_line_idx + 1 < line_count && self.lines[end_line_idx + 1].start <= end {
-                end_line_idx += 1;
+            // Fast path: if end is before the next line start, remain on same line
+            if end >= lines[end_line_idx].start {
+                if end_line_idx + 1 < line_count {
+                    let next_start = lines[end_line_idx + 1].start;
+                    if end >= next_start {
+                        while end_line_idx + 1 < line_count && lines[end_line_idx + 1].start <= end {
+                            end_line_idx += 1;
+                        }
+                    }
+                }
             }
             let end_line_start_offset = self.lines[end_line_idx].start;
             let line_end = end_line_idx + 1;
@@ -167,6 +204,42 @@ impl<'rk> LineIndex<'rk> {
         }
 
         results
+    }
+
+    /// Batch resolve sorted offsets into the provided output vector.
+    /// This is a non-allocating version of `batch_line_info` which clears and
+    /// fills `out` with `(line_start, line_end, column_start, column_end, indent)`.
+    #[inline]
+    pub fn batch_line_info_into(&self, offsets: &[(usize, usize)], out: &mut Vec<(usize, usize, usize, usize, usize)>) {
+        out.clear();
+        out.reserve(offsets.len());
+        let lines = &self.lines;
+        let line_count = lines.len();
+        // Start from the line index for the first offset to avoid scanning from 0
+        let mut current_line_idx = if !offsets.is_empty() { self.line_index(offsets[0].0) } else { 0usize };
+        // cache the indentation for the current_line_idx
+        let mut current_indent = lines[current_line_idx].indent;
+
+        for &(start, end) in offsets {
+            while current_line_idx + 1 < line_count && lines[current_line_idx + 1].start <= start {
+                current_line_idx += 1;
+                current_indent = lines[current_line_idx].indent;
+            }
+
+            let line_start_offset = lines[current_line_idx].start;
+            let line_start = current_line_idx + 1;
+            let column_start = start - line_start_offset + 1;
+
+            let mut end_line_idx = current_line_idx;
+            while end_line_idx + 1 < line_count && lines[end_line_idx + 1].start <= end {
+                end_line_idx += 1;
+            }
+            let end_line_start_offset = lines[end_line_idx].start;
+            let line_end = end_line_idx + 1;
+            let column_end = end - end_line_start_offset + 1;
+
+            out.push((line_start, line_end, column_start, column_end, current_indent));
+        }
     }
 
     /// Get the byte offset of a line start (0-indexed line).

@@ -23,6 +23,7 @@ use crate::Checker;
 use crate::Edit;
 use crate::Fix;
 use crate::rule::{LayoutRule, RuleId};
+use reukocyte_macros::check;
 
 /// Rule identifier for Layout/TrailingEmptyLines.
 pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingEmptyLines);
@@ -38,13 +39,14 @@ pub enum EnforcedStyle {
 }
 
 /// Check for trailing empty lines in the source.
+#[check(File)]
 pub fn check(checker: &mut Checker) {
     let config = &checker.config().layout.trailing_empty_lines;
     if !config.base.enabled {
         return;
     }
     // Check cop-specific include/exclude
-    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+    if !checker.should_run_cop_cached("layout.trailing_empty_lines", &config.base) {
         return;
     }
     let severity = config.base.severity;

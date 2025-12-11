@@ -25,8 +25,8 @@ impl NodeId {
 
 /// An AST node with a pointer to its parent node.
 #[derive(Debug)]
-struct NodeWithParent<'a> {
-    node: Node<'a>,
+struct NodeWithParent {
+    node: Node<'static>,
     parent_id: Option<NodeId>,
 }
 
@@ -41,11 +41,11 @@ struct NodeWithParent<'a> {
 /// (start_offset, end_offset) to its `NodeId`. This is populated during
 /// pre-indexing before rules run.
 #[derive(Debug)]
-pub struct Nodes<'rk> {
-    nodes: Vec<NodeWithParent<'rk>>,
+pub struct Nodes {
+    nodes: Vec<NodeWithParent>,
     offset_to_id: FxHashMap<(usize, usize), NodeId>,
 }
-impl<'a> Nodes<'a> {
+impl Nodes {
     /// Create a new, empty Nodes collection.
     #[inline]
     pub fn new() -> Self {
@@ -66,7 +66,7 @@ impl<'a> Nodes<'a> {
     }
     /// Insert a new node and return its unique ID.
     #[inline]
-    pub fn insert(&mut self, node: Node<'a>, parent: Option<NodeId>) -> NodeId {
+    pub fn insert(&mut self, node: Node<'static>, parent: Option<NodeId>) -> NodeId {
         let loc = node.location();
         let key = (loc.start_offset(), loc.end_offset());
         let id = NodeId::new(self.nodes.len());
@@ -76,7 +76,7 @@ impl<'a> Nodes<'a> {
     }
     /// Get a node by its ID.
     #[inline]
-    pub fn get(&self, node_id: NodeId) -> Option<&Node<'a>> {
+    pub fn get(&self, node_id: NodeId) -> Option<&Node<'static>> {
         self.nodes.get(node_id.index()).map(|n| &n.node)
     }
     /// Look up a NodeId by the node's location (start, end offsets).
@@ -91,7 +91,7 @@ impl<'a> Nodes<'a> {
     }
     /// Get the parent node of a given node.
     #[inline]
-    pub fn parent(&self, node_id: NodeId) -> Option<&Node<'a>> {
+    pub fn parent(&self, node_id: NodeId) -> Option<&Node<'static>> {
         self.parent_id(node_id).and_then(|pid| self.get(pid))
     }
     /// Get the ID of the nth ancestor of a node (0 = parent, 1 = grandparent, etc.).
@@ -101,7 +101,7 @@ impl<'a> Nodes<'a> {
     }
     /// Get the nth ancestor of a node (0 = parent, 1 = grandparent, etc.).
     #[inline]
-    pub fn ancestor(&self, node_id: NodeId, n: usize) -> Option<&Node<'a>> {
+    pub fn ancestor(&self, node_id: NodeId, n: usize) -> Option<&Node<'static>> {
         self.ancestor_id(node_id, n).and_then(|id| self.get(id))
     }
     /// Iterate over all ancestor IDs, starting from the given node.
@@ -111,11 +111,11 @@ impl<'a> Nodes<'a> {
     }
     /// Iterate over all ancestor nodes, starting from the given node.
     #[inline]
-    pub fn ancestors(&self, node_id: NodeId) -> impl Iterator<Item = &Node<'a>> + '_ {
+    pub fn ancestors(&self, node_id: NodeId) -> impl Iterator<Item = &Node<'static>> + '_ {
         self.ancestor_ids(node_id).filter_map(|id| self.get(id))
     }
 }
-impl Default for Nodes<'_> {
+impl Default for Nodes {
     fn default() -> Self {
         Self::new()
     }

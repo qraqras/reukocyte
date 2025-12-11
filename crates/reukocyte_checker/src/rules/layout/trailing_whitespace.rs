@@ -22,7 +22,7 @@ impl Check<Line<'_>> for TrailingWhitespace {
         if !config.base.enabled {
             return;
         }
-        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+        if !checker.should_run_cop_cached("layout.trailing_whitespace", &config.base) {
             return;
         }
         let severity = config.base.severity;

@@ -100,6 +100,12 @@ pub struct AllCopsConfig {
     /// Suggested extensions.
     #[serde(default)]
     pub suggested_extensions: Option<bool>,
+    /// Compiled GlobSet for include patterns (precompiled in loader)
+    #[serde(skip)]
+    pub(crate) include_glob: Option<globset::GlobSet>,
+    /// Compiled GlobSet for exclude patterns
+    #[serde(skip)]
+    pub(crate) exclude_glob: Option<globset::GlobSet>,
 }
 
 /// Merge AllCops configuration. Child values override parent values.
@@ -112,6 +118,43 @@ pub(super) fn merge_all_cops(parent: AllCopsConfig, child: AllCopsConfig) -> All
         cache_root_directory: child.cache_root_directory.or(parent.cache_root_directory),
         new_cops: child.new_cops.or(parent.new_cops),
         suggested_extensions: child.suggested_extensions.or(parent.suggested_extensions),
+        include_glob: None,
+        exclude_glob: None,
+    }
+}
+
+impl AllCopsConfig {
+    /// Compile global include/exclude globs into GlobSets (idempotent).
+    pub fn compile_globs(&mut self) {
+        use globset::{GlobSetBuilder, Glob};
+        // includes
+        if !self.include.is_empty() {
+            let mut builder = GlobSetBuilder::new();
+            for p in &self.include {
+                if let Ok(g) = Glob::new(p) { builder.add(g); }
+            }
+            if let Ok(gs) = builder.build() {
+                self.include_glob = Some(gs);
+            } else {
+                self.include_glob = None;
+            }
+        } else {
+            self.include_glob = None;
+        }
+        // excludes
+        if !self.exclude.is_empty() {
+            let mut builder = GlobSetBuilder::new();
+            for p in &self.exclude {
+                if let Ok(g) = Glob::new(p) { builder.add(g); }
+            }
+            if let Ok(gs) = builder.build() {
+                self.exclude_glob = Some(gs);
+            } else {
+                self.exclude_glob = None;
+            }
+        } else {
+            self.exclude_glob = None;
+        }
     }
 }
 
@@ -190,5 +233,15 @@ Layout/EndAlignment:
         let config: RubocopYaml = serde_yaml::from_str(yaml).unwrap();
         // "pending" is treated as enabled (not explicitly disabled)
         assert!(config.end_alignment.base.enabled);
+    }
+
+    #[test]
+    fn test_compile_globs_populates_sets() {
+        let mut cfg = AllCopsConfig::default();
+        cfg.include = vec!["**/*.rb".to_string()];
+        cfg.exclude = vec!["vendor/**/*".to_string()];
+        cfg.compile_globs();
+        assert!(cfg.include_glob.is_some());
+        assert!(cfg.exclude_glob.is_some());
     }
 }

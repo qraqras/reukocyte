@@ -196,6 +196,9 @@ fn scan_rules(rules_dir: &Path) -> FxHashMap<String, Vec<RuleInfo>> {
     // Pattern: #[check(Line)]
     // followed by: impl Check<Line> for RuleName
     let check_pattern_line = Regex::new(r"#\[check\(Line\)\]\s*impl\s+Check<Line(?:<'_>)?>\s+for\s+(\w+)").unwrap();
+    // Pattern: #[check(File)]
+    // followed by: pub fn check(checker: &mut Checker)
+    let check_pattern_file = Regex::new(r"#\[check\(File\)\]").unwrap();
 
     // Walk through all .rs files in the rules directory
     for entry in walkdir(rules_dir) {
@@ -209,7 +212,7 @@ fn scan_rules(rules_dir: &Path) -> FxHashMap<String, Vec<RuleInfo>> {
                     let rule_name = cap[2].to_string();
 
                     // Avoid duplicate entries for the same (module, rule_name, node_type)
-                        if !seen.insert((module_path.clone(), rule_name.clone(), node_type.clone())) {
+                    if !seen.insert((module_path.clone(), rule_name.clone(), node_type.clone())) {
                         // Already saw this rule (maybe via another attribute); warn and skip
                         println!("cargo:warning=Duplicate rule registration skipped: {}::{}", module_path, rule_name);
                         continue;
@@ -232,6 +235,22 @@ fn scan_rules(rules_dir: &Path) -> FxHashMap<String, Vec<RuleInfo>> {
                         name: rule_name,
                         module: module_path.clone(),
                     });
+                }
+                // File-based rules: look for attribute #[check(File)] anywhere in the file
+                if check_pattern_file.is_match(&content) {
+                    // Derive a rule name from the module path (last segment)
+                    if !module_path.is_empty() {
+                        let seg = module_path.rsplit("::").next().unwrap_or(&module_path);
+                        let rule_name = seg.to_string();
+                        if !seen.insert((module_path.clone(), rule_name.clone(), "File".to_string())) {
+                            println!("cargo:warning=Duplicate rule registration skipped: {}::{}", module_path, rule_name);
+                        } else {
+                            node_to_rules.entry("File".to_string()).or_default().push(RuleInfo {
+                                name: rule_name,
+                                module: module_path.clone(),
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -334,10 +353,47 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
     }
     writeln!(file, "}}").unwrap();
     writeln!(file).unwrap();
+    // Generate arrays of rule config paths grouped by category
+    writeln!(file, "// AST rules (node-based)").unwrap();
+    writeln!(file, "pub(crate) static __REUKO_AST_RULE_CONFIGS: &[&str] = &[").unwrap();
+    for (node_key, rules) in rule_impls {
+        if node_key == "Line" {
+            continue;
+        }
+        for r in rules {
+            writeln!(file, "    \"{}\",", r.config_path()).unwrap();
+        }
+    }
+    writeln!(file, "];\n").unwrap();
+
+    writeln!(file, "// Line-based rules (Line)").unwrap();
+    writeln!(file, "pub(crate) static __REUKO_LINE_RULE_CONFIGS: &[&str] = &[").unwrap();
+    if let Some(line_rules) = rule_impls.get("Line") {
+        for r in line_rules {
+            writeln!(file, "    \"{}\",", r.config_path()).unwrap();
+        }
+    }
+    writeln!(file, "];\n").unwrap();
+
+    writeln!(file, "// Token-based rules (placeholder)").unwrap();
+    writeln!(file, "pub(crate) static __REUKO_TOKEN_RULE_CONFIGS: &[&str] = &[];\n").unwrap();
+    writeln!(file).unwrap();
+    writeln!(file, "// File-based rules").unwrap();
+    writeln!(file, "pub(crate) static __REUKO_FILE_RULE_CONFIGS: &[&str] = &[").unwrap();
+    if let Some(file_rules) = rule_impls.get("File") {
+        for r in file_rules {
+            writeln!(file, "    \"{}\",", r.config_path()).unwrap();
+        }
+    }
+    writeln!(file, "];\n").unwrap();
     // Profiling registry for rules (used when RUEKO_PROFILE_RULES=1)
     writeln!(file, "use std::sync::{{Mutex, OnceLock}};").unwrap();
     writeln!(file, "use std::collections::HashMap;").unwrap();
-    writeln!(file, "pub(crate) static __REUKO_PROFILE_RULES_REGISTRY: OnceLock<Mutex<HashMap<&'static str, (u128, u64)>>> = OnceLock::new();").unwrap();
+    writeln!(
+        file,
+        "pub(crate) static __REUKO_PROFILE_RULES_REGISTRY: OnceLock<Mutex<HashMap<&'static str, (u128, u64)>>> = OnceLock::new();"
+    )
+    .unwrap();
     writeln!(file).unwrap();
 
     // Generate a macro for ALL node types (including those without rules)
@@ -359,20 +415,44 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
                 writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
                 writeln!(
                     file,
-                    "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{"
+                    "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
+                    config_path
                 )
                 .unwrap();
                 writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
                 writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
-                writeln!(file, "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);", full_path, type_path).unwrap();
-                writeln!(file, "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;").unwrap();
-                writeln!(file, "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));").unwrap();
+                writeln!(
+                    file,
+                    "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
+                    full_path, type_path
+                )
+                .unwrap();
+                writeln!(
+                    file,
+                    "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;"
+                )
+                .unwrap();
+                writeln!(
+                    file,
+                    "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));"
+                )
+                .unwrap();
                 writeln!(file, "                    let mut __reuko_lock = __reuko_map.lock().unwrap();").unwrap();
-                writeln!(file, "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));", rule.module, rule.name).unwrap();
+                writeln!(
+                    file,
+                    "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));",
+                    rule.module, rule.name
+                )
+                .unwrap();
                 writeln!(file, "                    e.0 += __reuko_rule_dur;").unwrap();
                 writeln!(file, "                    e.1 += 1u64;").unwrap();
                 writeln!(file, "                }} else {{").unwrap();
-                writeln!(file, "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);", full_path, type_path).unwrap();
+                writeln!(
+                    file,
+                    "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
+                    full_path, type_path
+                )
+                .unwrap();
                 writeln!(file, "                }}").unwrap();
                 writeln!(file, "            }}").unwrap();
                 writeln!(file, "        }}").unwrap();
@@ -398,20 +478,44 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
             writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
             writeln!(
                 file,
-                "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{"
+                "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
+                config_path
             )
             .unwrap();
             writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
             writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
-            writeln!(file, "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);", full_path).unwrap();
-            writeln!(file, "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;").unwrap();
-            writeln!(file, "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));").unwrap();
+            writeln!(
+                file,
+                "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);",
+                full_path
+            )
+            .unwrap();
+            writeln!(
+                file,
+                "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;"
+            )
+            .unwrap();
+            writeln!(
+                file,
+                "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));"
+            )
+            .unwrap();
             writeln!(file, "                    let mut __reuko_lock = __reuko_map.lock().unwrap();").unwrap();
-            writeln!(file, "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));", rule.module, rule.name).unwrap();
+            writeln!(
+                file,
+                "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));",
+                rule.module, rule.name
+            )
+            .unwrap();
             writeln!(file, "                    e.0 += __reuko_rule_dur;").unwrap();
             writeln!(file, "                    e.1 += 1u64;").unwrap();
             writeln!(file, "                }} else {{").unwrap();
-            writeln!(file, "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);", full_path).unwrap();
+            writeln!(
+                file,
+                "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);",
+                full_path
+            )
+            .unwrap();
             writeln!(file, "                }}").unwrap();
             writeln!(file, "            }}").unwrap();
             writeln!(file, "        }}").unwrap();
@@ -420,6 +524,70 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
         writeln!(file, "    }};\n}}").unwrap();
         writeln!(file).unwrap();
     }
+
+    // Generate a macro for file-level rules (functions with `pub fn check(checker)`)
+    if let Some(file_rules) = rule_impls.get("File") {
+        writeln!(file, "/// Runs all file-level rules.").unwrap();
+        writeln!(file, "macro_rules! run_file_rules {{").unwrap();
+        writeln!(file, "    ($checker:expr) => {{").unwrap();
+        for rule in file_rules {
+            let full_path = format!("crate::rules::{}", rule.module);
+            let config_path = rule.config_path();
+            writeln!(file, "        {{").unwrap();
+            writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
+            writeln!(
+                file,
+                "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
+                config_path
+            )
+            .unwrap();
+            writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
+            writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
+            writeln!(file, "                    {}::check($checker);", full_path).unwrap();
+            writeln!(
+                file,
+                "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;"
+            )
+            .unwrap();
+            writeln!(
+                file,
+                "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));"
+            )
+            .unwrap();
+            writeln!(file, "                    let mut __reuko_lock = __reuko_map.lock().unwrap();").unwrap();
+            writeln!(
+                file,
+                "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));",
+                rule.module, rule.name
+            )
+            .unwrap();
+            writeln!(file, "                    e.0 += __reuko_rule_dur;").unwrap();
+            writeln!(file, "                    e.1 += 1u64;").unwrap();
+            writeln!(file, "                }} else {{").unwrap();
+            writeln!(file, "                    {}::check($checker);", full_path).unwrap();
+            writeln!(file, "                }}").unwrap();
+            writeln!(file, "            }}").unwrap();
+            writeln!(file, "        }}").unwrap();
+        }
+        writeln!(file, "    }};").unwrap();
+        writeln!(file, "}}\n").unwrap();
+        writeln!(file).unwrap();
+    }
+
+    // Generate a helper function to precompute should-run map for all rules.
+    writeln!(file, "/// Precompute `should_run` for all rules and store into the checker's cache.").unwrap();
+    writeln!(file, "pub fn __reuko_precompute_should_run_map(checker: &crate::checker::Checker<'_>) {{").unwrap();
+    for (_key, vec) in rule_impls {
+        for r in vec {
+            let cfg_path = r.config_path();
+            writeln!(file, "    {{").unwrap();
+            writeln!(file, "        let cfg = &checker.config().{};", cfg_path).unwrap();
+            writeln!(file, "        let enabled = cfg.base.enabled && checker.should_run_cop(&cfg.base);").unwrap();
+            writeln!(file, "        checker.set_should_run_cached(\"{}\", enabled);", cfg_path).unwrap();
+            writeln!(file, "    }}").unwrap();
+        }
+    }
+    writeln!(file, "}}").unwrap();
 }
 
 /// Converts PascalCase to snake_case.

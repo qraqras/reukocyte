@@ -4,11 +4,11 @@ use ruby_prism::Node;
 
 /// Semantic model for a Ruby file.
 #[derive(Debug)]
-pub struct SemanticModel<'a> {
-    nodes: Nodes<'a>,
+pub struct SemanticModel {
+    nodes: Nodes,
     current_node_id: Option<NodeId>,
 }
-impl<'a> SemanticModel<'a> {
+impl SemanticModel {
     /// Create a new, empty semantic model.
     #[inline]
     pub fn new() -> Self {
@@ -19,13 +19,15 @@ impl<'a> SemanticModel<'a> {
     }
     /// Get access to the underlying nodes collection.
     #[inline]
-    pub fn nodes(&self) -> &Nodes<'a> {
+    pub fn nodes(&self) -> &Nodes {
         &self.nodes
     }
     /// Push a node onto the traversal stack.
     #[inline]
-    pub fn push_node(&mut self, node: Node<'a>) -> NodeId {
+    pub fn push_node(&mut self, node: Node<'_>) -> NodeId {
         let parent_id = self.current_node_id;
+        // SAFETY: We know the node lifetime is valid during the traversal.
+        let node: Node<'static> = unsafe { std::mem::transmute(node) };
         let new_id = self.nodes.insert(node, parent_id);
         self.current_node_id = Some(new_id);
         new_id
@@ -44,12 +46,12 @@ impl<'a> SemanticModel<'a> {
     }
     /// Get the currently visiting node.
     #[inline]
-    pub fn current_node(&self) -> Option<&Node<'a>> {
+    pub fn current_node(&self) -> Option<&Node<'static>> {
         self.current_node_id.and_then(|id| self.nodes.get(id))
     }
     /// Get the currently visiting node with its ID.
     #[inline]
-    pub fn current_node_with_id(&self) -> Option<(NodeId, &Node<'a>)> {
+    pub fn current_node_with_id(&self) -> Option<(NodeId, &Node<'static>)> {
         self.current_node_id.and_then(|id| self.nodes.get(id).map(|node| (id, node)))
     }
     /// Get the parent ID of the current node.
@@ -59,14 +61,14 @@ impl<'a> SemanticModel<'a> {
     }
     /// Get the parent of the current node.
     #[inline]
-    pub fn parent(&self) -> Option<&Node<'a>> {
+    pub fn parent(&self) -> Option<&Node<'static>> {
         self.current_node_id
             .and_then(|id| self.nodes.parent_id(id))
             .and_then(|parent_id| self.nodes.get(parent_id))
     }
     /// Get the parent of the current node with its ID.
     #[inline]
-    pub fn parent_with_id(&self) -> Option<(NodeId, &Node<'a>)> {
+    pub fn parent_with_id(&self) -> Option<(NodeId, &Node<'static>)> {
         self.current_node_id
             .and_then(|id| self.nodes.parent_id(id))
             .and_then(|parent_id| self.nodes.get(parent_id).map(|node| (parent_id, node)))
@@ -78,14 +80,14 @@ impl<'a> SemanticModel<'a> {
     }
     /// Get the Nth ancestor of the current node (0 = parent, 1 = grandparent, etc.)
     #[inline]
-    pub fn ancestor(&self, n: usize) -> Option<&Node<'a>> {
+    pub fn ancestor(&self, n: usize) -> Option<&Node<'static>> {
         self.current_node_id
             .and_then(|id| self.nodes.ancestor_ids(id).nth(n + 1))
             .and_then(|ancestor_id| self.nodes.get(ancestor_id))
     }
     /// Get the Nth ancestor of the current node with its ID (0 = parent, 1 = grandparent, etc.)
     #[inline]
-    pub fn ancestor_with_id(&self, n: usize) -> Option<(NodeId, &Node<'a>)> {
+    pub fn ancestor_with_id(&self, n: usize) -> Option<(NodeId, &Node<'static>)> {
         self.current_node_id
             .and_then(|id| self.nodes.ancestor_ids(id).nth(n + 1))
             .and_then(|ancestor_id| self.nodes.get(ancestor_id).map(|node| (ancestor_id, node)))
@@ -94,7 +96,7 @@ impl<'a> SemanticModel<'a> {
     ///
     /// Does NOT include the current node itself.
     #[inline]
-    pub fn ancestors(&self) -> impl Iterator<Item = &Node<'a>> + '_ {
+    pub fn ancestors(&self) -> impl Iterator<Item = &Node<'static>> + '_ {
         self.current_node_id
             .into_iter()
             .flat_map(|id| self.nodes.ancestor_ids(id).skip(1))
@@ -104,7 +106,7 @@ impl<'a> SemanticModel<'a> {
     ///
     /// Does NOT include the current node itself.
     #[inline]
-    pub fn ancestors_with_ids(&self) -> impl Iterator<Item = (NodeId, &Node<'a>)> + '_ {
+    pub fn ancestors_with_ids(&self) -> impl Iterator<Item = (NodeId, &Node<'static>)> + '_ {
         self.current_node_id
             .into_iter()
             .flat_map(|id| self.nodes.ancestor_ids(id).skip(1))
@@ -118,7 +120,7 @@ impl<'a> SemanticModel<'a> {
     }
 }
 
-impl Default for SemanticModel<'_> {
+impl Default for SemanticModel {
     fn default() -> Self {
         Self::new()
     }
