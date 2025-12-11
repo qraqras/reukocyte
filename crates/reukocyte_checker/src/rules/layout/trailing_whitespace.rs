@@ -1,48 +1,43 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::rule::{LayoutRule, RuleId};
+use crate::rule::{Check, LayoutRule, Line, Rule, RuleId};
+use reukocyte_macros::check;
 
 /// Rule identifier for Layout/TrailingWhitespace.
-pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
+pub struct TrailingWhitespace;
+
+impl Rule for TrailingWhitespace {
+    const ID: RuleId = RuleId::Layout(LayoutRule::TrailingWhitespace);
+}
 
 /// Check for trailing whitespace in the source.
 ///
 /// This rule doesn't need AST information - it operates on raw source bytes.
 /// Directly pushes diagnostics to the Checker (Ruff-style).
-pub fn check(checker: &mut Checker) {
-    let config = &checker.config().layout.trailing_whitespace;
-    if !config.base.enabled {
-        return;
-    }
-    // Check cop-specific include/exclude
-    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
-        return;
-    }
-    let severity = config.base.severity;
-
-    // Collect edit ranges first, then report them
-    let edit_ranges = collect_edit_ranges(checker.source());
-    for (start, end) in edit_ranges {
-        let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-        checker.report(RULE_ID, "Trailing whitespace detected.".to_string(), severity, start, end, Some(fix));
-    }
-}
-
-/// Collect (start, end) byte offsets of trailing whitespace.
-fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize)> {
-    let mut ranges = Vec::new();
-    let mut offset = 0;
-    for line in source.split(|&b| b == b'\n') {
-        if let Some(trailing_start) = find_trailing_whitespace_fast(line) {
-            let start = offset + trailing_start;
-            let end = offset + line.len();
-            ranges.push((start, end));
+#[check(Line)]
+impl Check<Line<'_>> for TrailingWhitespace {
+    fn check(line: &Line, checker: &mut Checker) {
+        let config = &checker.config().layout.trailing_whitespace;
+        if !config.base.enabled {
+            return;
         }
-        offset += line.len() + 1;
+        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+            return;
+        }
+        let severity = config.base.severity;
+
+        if let Some(trailing_start) = find_trailing_whitespace_fast(line.text) {
+            let start = line.start + trailing_start;
+            let end = line.end;
+            let fix = Fix::safe(vec![Edit::deletion(start, end)]);
+            checker.report(Self::ID, "Trailing whitespace detected.".to_string(), severity, start, end, Some(fix));
+        }
     }
-    ranges
 }
+
+// NOTE: This rule now operates per-line using `Check<Line>`, so collect_edit_ranges
+// is no longer necessary.
 
 /// Fast byte-level detection of trailing whitespace.
 /// RuboCop's [[:blank:]] = space (0x20), tab (0x09), fullwidth space (U+3000 = 0xE3 0x80 0x80)

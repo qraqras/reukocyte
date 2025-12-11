@@ -11,9 +11,9 @@ class Example
   def clean_method
     value = 42
     process(value)
-    end
+  end
 
   def another_method_with_spaces
     result = compute
-      end
   end
+end

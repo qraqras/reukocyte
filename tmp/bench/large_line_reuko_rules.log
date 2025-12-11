@@ -1,0 +1,21 @@
+[phase] parse: 21 ms
+[phase] build_index: 18 ms
+[phase] visit_nodes: 1595 ms
+[phase] visit_lines: 25 ms
+[phase] trailing_empty_lines: 0 ms
+[phase] into_diagnostics: 0 ms
+[phase] total: 1662 ms
+[rule_agg] rule_name,total_us,count
+[rule_agg] lint::debugger::Debugger,18,50000
+[rule_agg] layout::trailing_whitespace::TrailingWhitespace,2,65002
+[rule_agg] layout::indentation_consistency::IndentationConsistency,1553403,5001
+[rule_agg] layout::indentation_width::IndentationWidth,165,55001
+[rule_agg] layout::indentation_style::IndentationStyle,3,65002
+[rule_agg] layout::def_end_alignment::DefEndAlignment,8,5000
+[rule_agg] layout::empty_lines::EmptyLines,10,65002
+[rule_agg] layout::end_alignment::EndAlignment,16,50000
+[rule_agg] layout::leading_empty_lines::LeadingEmptyLines,4,65002
+tmp/bench/large.rb:65001:1: C: Layout/TrailingEmptyLines 1 trailing blank line detected.
+tmp/bench/large.rb:65002:1: C: Layout/EmptyLines Extra blank line detected.
+
+1 file(s) inspected, 2 offense(s) detected

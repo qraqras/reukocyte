@@ -1,5 +1,6 @@
 use regex::Regex;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
@@ -182,12 +183,19 @@ fn main() {
 /// Scans all .rs files under the rules directory for `#[check(NodeType)]` attributes.
 ///
 /// Returns a HashMap mapping node types to their implementing rules.
-fn scan_rules(rules_dir: &Path) -> HashMap<String, Vec<RuleInfo>> {
-    let mut node_to_rules: HashMap<String, Vec<RuleInfo>> = HashMap::new();
+fn scan_rules(rules_dir: &Path) -> FxHashMap<String, Vec<RuleInfo>> {
+    let mut node_to_rules: FxHashMap<String, Vec<RuleInfo>> = FxHashMap::default();
+    // Track globally seen (module, name, node_key) tuples to avoid duplicates
+    // across keys but allow the same rule to implement multiple node types.
+    let mut seen: FxHashSet<(String, String, String)> = FxHashSet::default();
 
     // Pattern: #[check(NodeType)]
     // followed by: impl Check<NodeType<'_>> for RuleName
-    let check_pattern = Regex::new(r"#\[check\((\w+)\)\]\s*impl\s+Check<\w+<'_>>\s+for\s+(\w+)").unwrap();
+    // Match only node types (ending with Node). Allow optional lifetime (<'_>) in the generic.
+    let check_pattern_node = Regex::new(r"#\[check\((\w+Node)\)\]\s*impl\s+Check<\w+(?:<'_>)?>\s+for\s+(\w+)").unwrap();
+    // Pattern: #[check(Line)]
+    // followed by: impl Check<Line> for RuleName
+    let check_pattern_line = Regex::new(r"#\[check\(Line\)\]\s*impl\s+Check<Line(?:<'_>)?>\s+for\s+(\w+)").unwrap();
 
     // Walk through all .rs files in the rules directory
     for entry in walkdir(rules_dir) {
@@ -196,16 +204,51 @@ fn scan_rules(rules_dir: &Path) -> HashMap<String, Vec<RuleInfo>> {
                 // Find the module path for this rule
                 let module_path = get_module_path(rules_dir, &entry);
 
-                for cap in check_pattern.captures_iter(&content) {
+                for cap in check_pattern_node.captures_iter(&content) {
                     let node_type = cap[1].to_string();
                     let rule_name = cap[2].to_string();
+
+                    // Avoid duplicate entries for the same (module, rule_name, node_type)
+                        if !seen.insert((module_path.clone(), rule_name.clone(), node_type.clone())) {
+                        // Already saw this rule (maybe via another attribute); warn and skip
+                        println!("cargo:warning=Duplicate rule registration skipped: {}::{}", module_path, rule_name);
+                        continue;
+                    }
 
                     node_to_rules.entry(node_type).or_default().push(RuleInfo {
                         name: rule_name,
                         module: module_path.clone(),
                     });
                 }
+                // Line-based rules
+                for cap in check_pattern_line.captures_iter(&content) {
+                    let rule_name = cap[1].to_string();
+                    // Use special key "Line"
+                    if !seen.insert((module_path.clone(), rule_name.clone(), "Line".to_string())) {
+                        println!("cargo:warning=Duplicate rule registration skipped: {}::{}", module_path, rule_name);
+                        continue;
+                    }
+                    node_to_rules.entry("Line".to_string()).or_default().push(RuleInfo {
+                        name: rule_name,
+                        module: module_path.clone(),
+                    });
+                }
             }
+        }
+    }
+
+    // Cross-check: ensure that no rule was registered under multiple different keys
+    // (this likely indicates a mis-detection). We'll detect duplicates by scanning
+    // the final map for repeated (module,name) across different keys.
+    let mut seen_by_key: FxHashMap<(String, String), Vec<String>> = FxHashMap::default();
+    for (key, vec) in &node_to_rules {
+        for r in vec {
+            seen_by_key.entry((r.module.clone(), r.name.clone())).or_default().push(key.clone());
+        }
+    }
+    for ((module, name), keys) in &seen_by_key {
+        if keys.len() > 1 {
+            println!("cargo:warning=Rule {}::{} registered for multiple keys: {:?}", module, name, keys);
         }
     }
 
@@ -271,7 +314,7 @@ fn node_name(type_path: &str) -> &str {
 }
 
 /// Generates the rule registry macro file.
-fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>) {
+fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>>) {
     let dest_path = Path::new(out_dir).join("rule_registry.rs");
     let mut file = File::create(&dest_path).unwrap();
 
@@ -290,6 +333,11 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
         }
     }
     writeln!(file, "}}").unwrap();
+    writeln!(file).unwrap();
+    // Profiling registry for rules (used when RUEKO_PROFILE_RULES=1)
+    writeln!(file, "use std::sync::{{Mutex, OnceLock}};").unwrap();
+    writeln!(file, "use std::collections::HashMap;").unwrap();
+    writeln!(file, "pub(crate) static __REUKO_PROFILE_RULES_REGISTRY: OnceLock<Mutex<HashMap<&'static str, (u128, u64)>>> = OnceLock::new();").unwrap();
     writeln!(file).unwrap();
 
     // Generate a macro for ALL node types (including those without rules)
@@ -314,12 +362,18 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
                     "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{"
                 )
                 .unwrap();
-                writeln!(
-                    file,
-                    "                <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);",
-                    full_path, type_path
-                )
-                .unwrap();
+                writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
+                writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
+                writeln!(file, "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);", full_path, type_path).unwrap();
+                writeln!(file, "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;").unwrap();
+                writeln!(file, "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));").unwrap();
+                writeln!(file, "                    let mut __reuko_lock = __reuko_map.lock().unwrap();").unwrap();
+                writeln!(file, "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));", rule.module, rule.name).unwrap();
+                writeln!(file, "                    e.0 += __reuko_rule_dur;").unwrap();
+                writeln!(file, "                    e.1 += 1u64;").unwrap();
+                writeln!(file, "                }} else {{").unwrap();
+                writeln!(file, "                    <{} as crate::rule::Check<{}<'_>>>::check($node, $checker);", full_path, type_path).unwrap();
+                writeln!(file, "                }}").unwrap();
                 writeln!(file, "            }}").unwrap();
                 writeln!(file, "        }}").unwrap();
             }
@@ -328,6 +382,42 @@ fn generate_registry(out_dir: &str, rule_impls: &HashMap<String, Vec<RuleInfo>>)
 
         writeln!(file, "    }};").unwrap();
         writeln!(file, "}}").unwrap();
+        writeln!(file).unwrap();
+    }
+    // Generate a macro for line-based rules if any exist
+    if let Some(line_rules) = rule_impls.get("Line") {
+        writeln!(file, "/// Runs all line-based rules.").unwrap();
+        writeln!(file, "macro_rules! run_line_rules {{").unwrap();
+        writeln!(file, "    ($line:expr, $checker:expr) => {{").unwrap();
+
+        for rule in line_rules {
+            let full_path = format!("crate::rules::{}::{}", rule.module, rule.name);
+            let config_path = rule.config_path();
+            // For line rules, config path is the same as for layout rules
+            writeln!(file, "        {{").unwrap();
+            writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
+            writeln!(
+                file,
+                "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base.include, &cfg.base.exclude) {{"
+            )
+            .unwrap();
+            writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
+            writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
+            writeln!(file, "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);", full_path).unwrap();
+            writeln!(file, "                    let __reuko_rule_dur = __reuko_rule_start.elapsed().as_micros() as u128;").unwrap();
+            writeln!(file, "                    let __reuko_map = __REUKO_PROFILE_RULES_REGISTRY.get_or_init(|| Mutex::new(HashMap::new()));").unwrap();
+            writeln!(file, "                    let mut __reuko_lock = __reuko_map.lock().unwrap();").unwrap();
+            writeln!(file, "                    let e = __reuko_lock.entry(\"{}::{}\").or_insert((0u128, 0u64));", rule.module, rule.name).unwrap();
+            writeln!(file, "                    e.0 += __reuko_rule_dur;").unwrap();
+            writeln!(file, "                    e.1 += 1u64;").unwrap();
+            writeln!(file, "                }} else {{").unwrap();
+            writeln!(file, "                    <{} as crate::rule::Check<crate::rule::Line<'_>>>::check($line, $checker);", full_path).unwrap();
+            writeln!(file, "                }}").unwrap();
+            writeln!(file, "            }}").unwrap();
+            writeln!(file, "        }}").unwrap();
+        }
+
+        writeln!(file, "    }};\n}}").unwrap();
         writeln!(file).unwrap();
     }
 }

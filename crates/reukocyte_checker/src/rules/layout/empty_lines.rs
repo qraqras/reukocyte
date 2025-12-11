@@ -24,28 +24,80 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::rule::{LayoutRule, RuleId};
+use crate::rule::{Check, LayoutRule, Line, Rule, RuleId};
+use reukocyte_macros::check;
 
 /// Rule identifier for Layout/EmptyLines.
-pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::EmptyLines);
+pub struct EmptyLines;
+
+impl Rule for EmptyLines {
+    const ID: RuleId = RuleId::Layout(LayoutRule::EmptyLines);
+}
 
 /// Check for consecutive empty lines in the source.
-pub fn check(checker: &mut Checker) {
-    let config = &checker.config().layout.empty_lines;
-    if !config.base.enabled {
-        return;
-    }
-    // Check cop-specific include/exclude
-    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
-        return;
-    }
-    let severity = config.base.severity;
+#[check(Line)]
+impl Check<Line<'_>> for EmptyLines {
+    fn check(line: &Line, checker: &mut Checker) {
+        let config = &checker.config().layout.empty_lines;
+        if !config.base.enabled {
+            return;
+        }
+        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+            return;
+        }
+        let severity = config.base.severity;
 
-    let edit_ranges = collect_edit_ranges(checker.source());
-    for (start, end, message) in edit_ranges {
-        // Fix: remove extra blank lines, keeping just one
-        let fix = Fix::safe(vec![Edit::deletion(start, end)]);
-        checker.report(RULE_ID, message, severity, start, end, Some(fix));
+        // Check if current line is empty (spaces, tabs, CR)
+        let is_empty = line.text.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+        if !is_empty || line.index == 0 {
+            return;
+        }
+
+        // Check previous line
+        let prev_idx = line.index - 1;
+        let prev_text = checker.line_index().line(prev_idx).unwrap_or(&[]);
+        let prev_is_empty = prev_text.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+        if !prev_is_empty {
+            return;
+        }
+
+        // Only report at the second consecutive empty line (avoid duplicates)
+        if prev_idx > 0 {
+            let prev_prev_text = checker.line_index().line(prev_idx - 1).unwrap_or(&[]);
+            let prev_prev_empty = prev_prev_text.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+            if prev_prev_empty {
+                // already reported at an earlier line
+                return;
+            }
+        }
+
+        // At this point, prev line is first empty, and current is second empty in a block
+        // Find deletion range: from after first empty line's newline to the start of next non-empty line
+        let mut first_empty_end = checker.line_index().line_start(prev_idx).unwrap_or(0) + prev_text.len();
+        // Include newline if present
+        if first_empty_end < checker.source().len() && checker.source()[first_empty_end] == b'\n' {
+            first_empty_end += 1;
+        }
+
+        // Find end offset by scanning forward until next non-empty line
+        let mut j = line.index + 1;
+        let line_count = checker.line_index().line_count();
+        while j < line_count {
+            let nt = checker.line_index().line(j).unwrap_or(&[]);
+            let nt_empty = nt.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+            if !nt_empty { break; }
+            j += 1;
+        }
+        let end_offset = if j < line_count { checker.line_index().line_start(j).unwrap_or(checker.source().len()) } else { checker.source().len() };
+
+        let extra_lines = j.saturating_sub(prev_idx + 1);
+        let message = if extra_lines == 1 {
+            "Extra blank line detected.".to_string()
+        } else {
+            format!("Extra blank line detected.")
+        };
+        let fix = Fix::safe(vec![Edit::deletion(first_empty_end, end_offset)]);
+        checker.report(Self::ID, message, severity, first_empty_end, end_offset, Some(fix));
     }
 }
 
@@ -73,7 +125,7 @@ fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize, String)> {
                 // The range to delete starts after the first empty line
                 let first_empty_end = find_first_newline_after(source, empty_start).map(|pos| pos + 1).unwrap_or(empty_start);
 
-                let extra_lines = consecutive_empty - 1;
+                let _extra_lines = consecutive_empty - 1;
                 let message = format!("Extra blank line detected.");
 
                 // Delete from after first empty line to start of current line

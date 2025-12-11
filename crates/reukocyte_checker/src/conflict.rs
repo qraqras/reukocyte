@@ -1,5 +1,5 @@
 use crate::rule::RuleId;
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 
 /// Registry to track which rules have had their fixes applied in the current iteration.
 ///
@@ -10,12 +10,12 @@ use std::collections::HashSet;
 /// - Conflicting rules are skipped and retried in the next iteration
 #[derive(Debug, Default)]
 pub struct ConflictRegistry {
-    applied_rules: HashSet<RuleId>,
+    applied_rules: FxHashSet<RuleId>,
 }
 impl ConflictRegistry {
     /// Create a new empty conflict registry.
     pub fn new() -> Self {
-        Self { applied_rules: HashSet::new() }
+        Self { applied_rules: FxHashSet::default() }
     }
     /// Mark a rule as having had its fixes applied.
     pub fn mark_applied(&mut self, rule_id: RuleId) {

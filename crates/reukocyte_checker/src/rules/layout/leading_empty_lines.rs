@@ -18,63 +18,57 @@
 use crate::Checker;
 use crate::Edit;
 use crate::Fix;
-use crate::rule::{LayoutRule, RuleId};
+use crate::rule::{Check, LayoutRule, Line, Rule, RuleId};
+use reukocyte_macros::check;
 
-/// Rule identifier for Layout/LeadingEmptyLines.
-pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::LeadingEmptyLines);
+/// LeadingEmptyLines rule as a struct so it can implement `Rule` + `Check<Line>`.
+pub struct LeadingEmptyLines;
+
+impl Rule for LeadingEmptyLines {
+    const ID: RuleId = RuleId::Layout(LayoutRule::LeadingEmptyLines);
+}
 
 /// Check for leading empty lines in the source.
-pub fn check(checker: &mut Checker) {
-    let config = &checker.config().layout.leading_empty_lines;
-    if !config.base.enabled {
-        return;
-    }
-    // Check cop-specific include/exclude
-    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
-        return;
-    }
-    let severity = config.base.severity;
+#[check(Line)]
+impl Check<Line<'_>> for LeadingEmptyLines {
+    fn check(line: &Line, checker: &mut Checker) {
+        let config = &checker.config().layout.leading_empty_lines;
+        if !config.base.enabled { return; }
+        if !checker.should_run_cop(&config.base.include, &config.base.exclude) { return; }
+        let severity = config.base.severity;
 
-    if let Some((end, message)) = analyze(checker.source()) {
+        // Trigger only when we encounter the first non-empty line.
+        let is_non_empty = !line.text.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+        if !is_non_empty { return; }
+        if line.index == 0 { return; }
+
+        // Ensure all preceding lines are blank/whitespace-only.
+        for j in 0..line.index {
+            let prev = checker.line_index().line(j).unwrap_or(&[]);
+            let prev_empty = prev.iter().all(|&b| b == b' ' || b == b'\t' || b == b'\r');
+            if !prev_empty { return; }
+        }
+
+        // Count leading blank lines
+        let leading_count = line.index;
+        let end = line.start; // delete from 0 up to the start of this line
+
+        let message = if leading_count == 1 {
+            "Unnecessary blank line at the beginning of the source.".to_string()
+        } else {
+            format!("Unnecessary blank lines at the beginning of the source ({} lines).", leading_count)
+        };
+
         let fix = Fix::safe(vec![Edit::deletion(0, end)]);
-        checker.report(RULE_ID, message, severity, 0, end, Some(fix));
+        checker.report(Self::ID, message, severity, 0, end, Some(fix));
     }
 }
 
 /// Analyze source for leading empty lines.
 /// Returns (end_offset, message) if there's an issue.
-fn analyze(source: &[u8]) -> Option<(usize, String)> {
-    if source.is_empty() {
-        return None;
-    }
+// NOTE: `analyze` removed; logic is implemented per-line in Check<Line> above.
 
-    // Find the first non-whitespace character
-    let first_content = source.iter().position(|&b| !is_leading_whitespace(b))?;
-
-    // Count leading newlines
-    let leading_newlines = source[..first_content].iter().filter(|&&b| b == b'\n').count();
-
-    if leading_newlines > 0 {
-        // Find the end of leading blank lines (position after the last leading newline)
-        let end = source[..first_content].iter().rposition(|&b| b == b'\n').map(|pos| pos + 1).unwrap_or(0);
-
-        let message = if leading_newlines == 1 {
-            "Unnecessary blank line at the beginning of the source.".to_string()
-        } else {
-            format!("Unnecessary blank lines at the beginning of the source ({} lines).", leading_newlines)
-        };
-
-        Some((end, message))
-    } else {
-        None
-    }
-}
-
-/// Check if a byte is leading whitespace (space, tab, newline, CR).
-#[inline]
-fn is_leading_whitespace(b: u8) -> bool {
-    matches!(b, b' ' | b'\t' | b'\n' | b'\r')
-}
+// Helper function `is_leading_whitespace` removed - not needed for per-line checks.
 
 #[cfg(test)]
 mod tests {

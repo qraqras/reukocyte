@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::custom_nodes::AssignmentNode;
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::Fix;
 use crate::diagnostic::RawDiagnostic;
@@ -8,6 +7,7 @@ use crate::locator::LineIndex;
 use crate::rule::RuleId;
 use crate::semantic::SemanticModel;
 use ruby_prism::*;
+use crate::custom_nodes::AssignmentNode;
 use rustc_hash::FxHashSet;
 
 // Include the auto-generated rule registry macros
@@ -56,7 +56,26 @@ impl<'rk> Checker<'rk> {
             semantic: SemanticModel::new(),
         }
     }
-
+    /// Run all registered AST/node-based rules (single traversal).
+    #[inline]
+    pub fn visit_nodes(&mut self, root: &Node<'rk>) {
+        // Delegate to the Visit implementation provided for `Checker`.
+        self.visit(root);
+    }
+    /// Run all registered line-based rules (one pass over lines).
+    #[inline]
+    pub fn visit_lines(&mut self) {
+        use crate::rule::Line;
+        let line_count = self.line_index.line_count();
+        for i in 0..line_count {
+            let start = self.line_index.line_start(i).unwrap_or(0);
+            let text = self.line_index.line(i).unwrap_or(&[]);
+            let end = start + text.len();
+            let indent = self.line_index.indentation(start);
+            let line = Line { index: i, start, end, text, indent };
+            run_line_rules!(&line, self);
+        }
+    }
     /// Create a new Checker instance with a file path.
     pub fn with_file_path(source: &'rk [u8], config: &'rk Config, file_path: &'rk str) -> Self {
         Self {

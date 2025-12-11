@@ -1,0 +1,7 @@
+[phase] parse: 21 ms
+[phase] build_index: 16 ms
+[phase] visit_nodes: 20 ms
+[phase] visit_lines: 1 ms
+[phase] trailing_empty_lines: 0 ms
+[phase] into_diagnostics: 0 ms
+[phase] total: 62 ms

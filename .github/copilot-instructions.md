@@ -2,7 +2,7 @@
 
 ## お願い
 - 特に指定がない限り日本語で回答してください
-- できるだけ図示してください
+- 処理の流れについてはできるだけ図示してください
 - コードの修正をする場合、事前に方針を説明してください
 
 ## 直近のタスク
@@ -60,7 +60,7 @@
 │  │ check(source, config, file_path) → Vec<Diagnostic>                  │    │
 │  │   1. ruby_prism::parse(source)                                      │    │
 │  │   2. checker.build_index(&ast)  ← SemanticModel構築                 │    │
-│  │   3. checker.visit(&ast)        ← AST-based rules                   │    │
+│  │   3. checker.visit_nodes(&ast)        ← AST-based rules                   │    │
 │  │   4. run_line_rules!()          ← Line-based rules (マクロ生成)      │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                             │

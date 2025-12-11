@@ -1,0 +1,3 @@
+command,mean,stddev,median,user,system,min,max
+"target/release/reuko --only Layout/TrailingWhitespace,Layout/EmptyLines,Layout/LeadingEmptyLines,Layout/TrailingEmptyLines,Layout/IndentationStyle tmp/bench/large.rb",1.5523473124200002,0.006362172597497041,1.55210812052,1.5444869799999998,0.006862,1.5382063290199999,1.55957566302
+"rubocop --only Layout/TrailingWhitespace,Layout/EmptyLines,Layout/LeadingEmptyLines,Layout/TrailingEmptyLines,Layout/IndentationStyle tmp/bench/large.rb",0.41966126612,0.003547892728659948,0.41949522452,0.38791958,0.030333999999999993,0.41281478702,0.42491428702000006

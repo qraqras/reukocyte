@@ -1,0 +1,11 @@
+[phase] parse: 17 ms
+[phase] build_index: 14 ms
+[phase] visit_nodes: 1480 ms
+[phase] visit_lines: 9 ms
+[phase] trailing_empty_lines: 0 ms
+[phase] into_diagnostics: 0 ms
+[phase] total: 1524 ms
+tmp/bench/large.rb:65001:1: C: Layout/TrailingEmptyLines 1 trailing blank line detected.
+tmp/bench/large.rb:65002:1: C: Layout/EmptyLines Extra blank line detected.
+
+1 file(s) inspected, 2 offense(s) detected

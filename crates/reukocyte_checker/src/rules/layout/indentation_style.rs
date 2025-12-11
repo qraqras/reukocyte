@@ -19,61 +19,41 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::{Edit, Fix};
-use crate::rule::{LayoutRule, RuleId};
+use crate::rule::{Check, LayoutRule, Line, Rule, RuleId};
+use reukocyte_macros::check;
 
 /// Rule identifier for Layout/IndentationStyle.
-pub const RULE_ID: RuleId = RuleId::Layout(LayoutRule::IndentationStyle);
+pub struct IndentationStyle;
+
+impl Rule for IndentationStyle {
+    const ID: RuleId = RuleId::Layout(LayoutRule::IndentationStyle);
+}
 
 /// Check for tab indentation (default: spaces preferred).
-pub fn check(checker: &mut Checker) {
-    let config = &checker.config().layout.indentation_style;
-    if !config.base.enabled {
-        return;
-    }
-    // Check cop-specific include/exclude
-    if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
-        return;
-    }
-    let severity = config.base.severity;
+#[check(Line)]
+impl Check<Line<'_>> for IndentationStyle {
+    fn check(line: &Line, checker: &mut Checker) {
+        let config = &checker.config().layout.indentation_style;
+        if !config.base.enabled {
+            return;
+        }
+        if !checker.should_run_cop(&config.base.include, &config.base.exclude) {
+            return;
+        }
+        let severity = config.base.severity;
 
-    let edit_ranges = collect_edit_ranges(checker.source());
-    for (start, end, replacement) in edit_ranges {
-        let fix = Fix::safe(vec![Edit::replacement(start, end, replacement)]);
-        checker.report(RULE_ID, "Tab detected in indentation.".to_string(), severity, start, end, Some(fix));
-    }
-}
-
-/// Collect ranges of leading tabs and their replacements.
-/// Returns (start, end, replacement) for each range of tabs found.
-fn collect_edit_ranges(source: &[u8]) -> Vec<(usize, usize, String)> {
-    let mut ranges = Vec::new();
-
-    // Empty source, nothing to check
-    if source.is_empty() {
-        return ranges;
-    }
-
-    // Process each line
-    let mut pos = 0;
-    for line in source.split(|&b| b == b'\n') {
-        // Find leading tabs in this line
-        if let Some((tab_start, tab_end)) = find_leading_tabs(line) {
-            let abs_start = pos + tab_start;
-            let abs_end = pos + tab_end;
-
-            // Calculate replacement spaces (2 spaces per tab, configurable later)
+        if let Some((tab_start, tab_end)) = find_leading_tabs(line.text) {
+            let abs_start = line.start + tab_start;
+            let abs_end = line.start + tab_end;
             let tab_count = tab_end - tab_start;
             let replacement = " ".repeat(tab_count * 2);
-
-            ranges.push((abs_start, abs_end, replacement));
+            let fix = Fix::safe(vec![Edit::replacement(abs_start, abs_end, replacement)]);
+            checker.report(Self::ID, "Tab detected in indentation.".to_string(), severity, abs_start, abs_end, Some(fix));
         }
-
-        // Move to next line (+1 for newline character)
-        pos += line.len() + 1;
     }
-
-    ranges
 }
+
+// NOTE: Now operating per-line using `Check<Line>`, so collect_edit_ranges is unused.
 
 /// Find the range of leading tabs in a line.
 /// Returns (start, end) offsets relative to line start, or None if no leading tabs.

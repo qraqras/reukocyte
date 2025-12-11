@@ -24,7 +24,6 @@ pub use fix::{InfiniteCorrectionLoop, apply_fixes, apply_fixes_filtered, apply_f
 pub use locator::LineIndex;
 pub use rule::{Category, Check, LayoutRule, LintRule, Rule, RuleId};
 
-use ruby_prism::Visit;
 
 /// Check a Ruby source file for violations with default configuration.
 ///
@@ -49,7 +48,20 @@ pub fn check_with_config_and_path(
     config: &Config,
     file_path: Option<&str>,
 ) -> Vec<Diagnostic> {
+    use std::time::Instant;
+    use std::env;
+
+    let profile_phases = env::var("RUEKO_PROFILE_PHASES").is_ok();
+    let profile_t0 = if profile_phases { Some(Instant::now()) } else { None };
+
+    let parse_start = if profile_phases { Some(Instant::now()) } else { None };
     let parse_result = ruby_prism::parse(source);
+    if profile_phases {
+        if let Some(dur) = parse_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] parse: {} ms", dur.as_millis());
+        }
+    }
+
     let mut checker = if let Some(path) = file_path {
         Checker::with_file_path(source, config, path)
     } else {
@@ -57,21 +69,77 @@ pub fn check_with_config_and_path(
     };
 
     // Phase 1: Build node index (pre-index all nodes before rules run)
+    let build_index_start = if profile_phases { Some(Instant::now()) } else { None };
     checker.build_index(&parse_result.node());
+    if profile_phases {
+        if let Some(dur) = build_index_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] build_index: {} ms", dur.as_millis());
+        }
+    }
 
     // Phase 2: Run AST-based rules (single traversal)
-    checker.visit(&parse_result.node());
+    let visit_nodes_start = if profile_phases { Some(Instant::now()) } else { None };
+    checker.visit_nodes(&parse_result.node());
+    if profile_phases {
+        if let Some(dur) = visit_nodes_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] visit_nodes: {} ms", dur.as_millis());
+        }
+    }
 
     // Phase 3: Run line-based rules (after AST, can use collected info)
-    rules::layout::trailing_whitespace::check(&mut checker);
+    let visit_lines_start = if profile_phases { Some(Instant::now()) } else { None };
+    checker.visit_lines();
+    if profile_phases {
+        if let Some(dur) = visit_lines_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] visit_lines: {} ms", dur.as_millis());
+        }
+    }
+
+    // Some layout checks need file-level analysis; keep them executed explicitly
+    let trailing_start = if profile_phases { Some(Instant::now()) } else { None };
     rules::layout::trailing_empty_lines::check(&mut checker);
-    rules::layout::leading_empty_lines::check(&mut checker);
-    rules::layout::empty_lines::check(&mut checker);
-    rules::layout::indentation_style::check(&mut checker);
+    if profile_phases {
+        if let Some(dur) = trailing_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] trailing_empty_lines: {} ms", dur.as_millis());
+        }
+    }
 
-    checker.into_diagnostics()
+    let into_diagnostics_start = if profile_phases { Some(Instant::now()) } else { None };
+    let res = checker.into_diagnostics();
+    if profile_phases {
+        if let Some(dur) = into_diagnostics_start.map(|s| s.elapsed()) {
+            eprintln!("[phase] into_diagnostics: {} ms", dur.as_millis());
+        }
+        if let Some(start) = profile_t0 {
+            eprintln!("[phase] total: {} ms", start.elapsed().as_millis());
+        }
+    }
+    // Print aggregated per-rule timing if profiling enabled
+    if std::env::var("RUEKO_PROFILE_RULES").is_ok() {
+        // The registry is generated in the rule_registry macros and placed in the checker module
+        if let Some(reg) = crate::checker::__REUKO_PROFILE_RULES_REGISTRY.get() {
+            let map = reg.lock().unwrap();
+            eprintln!("[rule_agg] rule_name,total_us,count");
+            for (k, v) in map.iter() {
+                eprintln!("[rule_agg] {},{},{}", k, v.0, v.1);
+            }
+        }
+    }
+    if std::env::var("RUEKO_PROFILE_RULE_SUBPHASES").is_ok() {
+        eprintln!("[dbg] subphase env set");
+        match crate::rules::layout::indentation_consistency::__REUKO_INDENTCONS_SUB_REGISTRY.get() {
+            Some(reg) => {
+                let r = reg.lock().unwrap();
+                eprintln!("[rule_subphase] layout::indentation_consistency::IndentationConsistency,total_us,count,collect_us,alignment_us,offsets_us,batch_us,iter_us,fix_creation_us,report_us,conflict_us");
+                eprintln!("[rule_subphase] layout::indentation_consistency::IndentationConsistency,{},{},{},{},{},{},{},{},{},{}", r.total_us, r.count, r.collect_us, r.align_us, r.offsets_us, r.batch_us, r.iter_us, r.fix_creation_us, r.report_us, r.conflict_us);
+            }
+            None => {
+                eprintln!("[dbg] indentation_consistency sub-registry not initialized");
+            }
+        }
+    }
+    res
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,6 +162,7 @@ mod tests {
     fn test_check_trailing_whitespace() {
         let source = b"def foo  \n  bar\nend\n";
         let diagnostics = check(source);
+        
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
     }
