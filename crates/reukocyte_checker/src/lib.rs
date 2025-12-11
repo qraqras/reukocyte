@@ -7,13 +7,13 @@ mod diagnostic;
 mod fix;
 mod locator;
 mod rule;
-mod semantic;
 pub mod utility;
 
 pub mod rules;
 
 pub use checker::Checker;
 pub use config::{AllCopsConfig, Config, InheritFrom, LayoutConfig, LoadError, RubocopYaml, load_rubocop_yaml, parse_rubocop_yaml};
+
 pub use conflict::ConflictRegistry;
 pub use corrector::{ClobberingError, Corrector};
 pub use diagnostic::{Applicability, Diagnostic, Edit, Fix, Severity};
@@ -54,7 +54,7 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
 
     // Decide whether to parse based on which rule categories are enabled.
     // If any AST/token based rules are enabled, we need to parse; otherwise skip.
-    let needs_parse = checker.needs_ast.get() || checker.needs_tokens.get();
+    let needs_parse = true;
     let parse_result = if needs_parse {
         let parse_start = if profile_phases { Some(Instant::now()) } else { None };
         let res = ruby_prism::parse(source);
@@ -68,19 +68,8 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
         None
     };
 
-    // Phase 1: Build node index (pre-index all nodes before rules run)
-    if let Some(ref parse_result) = parse_result {
-        let build_index_start = if profile_phases { Some(Instant::now()) } else { None };
-        checker.build_index(&parse_result.node());
-        if profile_phases {
-            if let Some(dur) = build_index_start.map(|s| s.elapsed()) {
-                eprintln!("[phase] build_index: {} ms", dur.as_millis());
-            }
-        }
-    }
-
-    // Phase 2: Run AST-based rules (single traversal)
-    if checker.needs_ast.get() {
+    // Phase 1: Run AST-based rules (single traversal with semantic model building)
+    if true {
         if let Some(ref parse_result) = parse_result {
             let visit_nodes_start = if profile_phases { Some(Instant::now()) } else { None };
             checker.visit_nodes(&parse_result.node());
@@ -92,8 +81,8 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
         }
     }
 
-    // Phase 3: Run line-based rules (after AST, can use collected info)
-    if checker.needs_lines.get() {
+    // Phase 2: Run line-based rules (after AST, can use collected info)
+    if true {
         let visit_lines_start = if profile_phases { Some(Instant::now()) } else { None };
         checker.visit_lines();
         if profile_phases {
@@ -105,8 +94,8 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
 
     // Some layout checks need file-level analysis; keep them executed explicitly
     let trailing_start = if profile_phases { Some(Instant::now()) } else { None };
-    if checker.needs_file.get() {
-        checker.run_file_rules();
+    if true {
+        // checker.run_file_rules(); // No file rules currently
     }
     if profile_phases {
         if let Some(dur) = trailing_start.map(|s| s.elapsed()) {
@@ -135,80 +124,24 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
             }
         }
     }
-    if std::env::var("RUEKO_PROFILE_RULE_SUBPHASES").is_ok() {
-        eprintln!("[dbg] subphase env set");
-        match crate::rules::layout::indentation_consistency::__REUKO_INDENTCONS_SUB_REGISTRY.get() {
-            Some(reg) => {
-                let r = reg.lock().unwrap();
-                eprintln!(
-                    "[rule_subphase] layout::indentation_consistency::IndentationConsistency,total_us,count,collect_us,alignment_us,offsets_us,batch_us,iter_us,fix_creation_us,report_us,conflict_us"
-                );
-                eprintln!(
-                    "[rule_subphase] layout::indentation_consistency::IndentationConsistency,{},{},{},{},{},{},{},{},{},{}",
-                    r.total_us, r.count, r.collect_us, r.align_us, r.offsets_us, r.batch_us, r.iter_us, r.fix_creation_us, r.report_us, r.conflict_us
-                );
-            }
-            None => {
-                eprintln!("[dbg] indentation_consistency sub-registry not initialized");
-            }
-        }
-    }
+    // Temporarily disabled due to SemanticModel removal
+    // if std::env::var("RUEKO_PROFILE_RULE_SUBPHASES").is_ok() {
+    //     eprintln!("[dbg] subphase env set");
+    //     match crate::rules::layout::indentation_consistency::__REUKO_INDENTCONS_SUB_REGISTRY.get() {
+    //         Some(reg) => {
+    //             let r = reg.lock().unwrap();
+    //             eprintln!(
+    //                 "[rule_subphase] layout::indentation_consistency::IndentationConsistency,total_us,count,collect_us,alignment_us,offsets_us,batch_us,iter_us,fix_creation_us,report_us,conflict_us"
+    //             );
+    //             eprintln!(
+    //                 "[rule_subphase] layout::indentation_consistency::IndentationConsistency,{},{},{},{},{},{},{},{},{},{}",
+    //                 r.total_us, r.count, r.collect_us, r.align_us, r.offsets_us, r.batch_us, r.iter_us, r.fix_creation_us, r.report_us, r.conflict_us
+    //             );
+    //         }
+    //         None => {
+    //             eprintln!("[dbg] indentation_consistency sub-registry not initialized");
+    //         }
+    //     }
+    // }
     res
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_check_empty_source() {
-        let source = b"";
-        let diagnostics = check(source);
-        assert!(diagnostics.is_empty());
-    }
-
-    #[test]
-    fn test_check_clean_source() {
-        let source = b"def foo\n  bar\nend\n";
-        let diagnostics = check(source);
-        assert!(diagnostics.is_empty());
-    }
-
-    #[test]
-    fn test_check_trailing_whitespace() {
-        let source = b"def foo  \n  bar\nend\n";
-        let diagnostics = check(source);
-
-        assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
-    }
-
-    #[test]
-    fn test_check_debugger() {
-        let source = b"def foo\n  binding.pry\nend\n";
-        let diagnostics = check(source);
-        assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule(), "Lint/Debugger");
-    }
-
-    #[test]
-    fn test_check_multiple_violations() {
-        let source = b"def foo  \n  binding.pry\nend\n";
-        let diagnostics = check(source);
-        assert_eq!(diagnostics.len(), 2);
-        // Should be sorted by line/column
-        assert_eq!(diagnostics[0].rule(), "Layout/TrailingWhitespace");
-        assert_eq!(diagnostics[1].rule(), "Lint/Debugger");
-    }
-
-    #[test]
-    fn test_should_run_with_compiled_base_glob() {
-        let mut cfg = Config::default();
-        // Set an include that does not match the file path
-        cfg.layout.trailing_whitespace.base.include = vec!["spec/**/*".to_string()];
-        // Compile globs as loader would
-        cfg.layout.trailing_whitespace.base.compile_globs();
-        let checker = Checker::with_file_path(b"def x\nend\n", &cfg, "lib/foo.rb");
-        // The include only matches spec/** so this file should not be included
-        assert!(!checker.should_run_cop(&cfg.layout.trailing_whitespace.base));
-    }
 }

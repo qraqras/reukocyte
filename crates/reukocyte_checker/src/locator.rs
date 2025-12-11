@@ -4,12 +4,18 @@ use crate::rule::Line as RuleLine;
 #[derive(Debug, Clone)]
 pub struct LineIndex<'rk> {
     lines: Vec<RuleLine<'rk>>,
-    stride: usize, // Number of lines per stride group
+    stride: usize,             // Number of lines per stride group
     stride_starts: Vec<usize>, // Start offsets for each stride group
 }
 impl<'rk> LineIndex<'rk> {
     /// Build a LineIndex from source bytes.
     pub fn from_source(source: &'rk [u8]) -> Self {
+        // return Self {
+        //     lines: Vec::new(),
+        //     stride: 0,
+        //     stride_starts: Vec::new(),
+        // };
+
         let mut line_starts = Vec::with_capacity(source.len() / 80); // Rough estimate
         line_starts.push(0);
         for (i, &byte) in source.iter().enumerate() {
@@ -29,7 +35,13 @@ impl<'rk> LineIndex<'rk> {
             };
             let text = &source[start..end];
             let indent = text.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
-            lines.push(RuleLine { index: i, start, end, text, indent });
+            lines.push(RuleLine {
+                index: i,
+                start,
+                end,
+                text,
+                indent,
+            });
         }
 
         // Build stride index (e.g., every 64 lines)
@@ -39,7 +51,11 @@ impl<'rk> LineIndex<'rk> {
             stride_starts.push(lines[i].start);
         }
 
-        Self { lines, stride: STRIDE_SIZE, stride_starts }
+        Self {
+            lines,
+            stride: STRIDE_SIZE,
+            stride_starts,
+        }
     }
     /// Get the line index (0-indexed) for a byte offset.
     pub fn line_index(&self, offset: usize) -> usize {

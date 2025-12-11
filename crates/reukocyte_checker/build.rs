@@ -413,12 +413,7 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
                 // Generate enabled check and include/exclude check before calling the rule
                 writeln!(file, "        {{").unwrap();
                 writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
-                writeln!(
-                    file,
-                    "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
-                    config_path
-                )
-                .unwrap();
+                writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base) {{").unwrap();
                 writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
                 writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
                 writeln!(
@@ -476,12 +471,7 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
             // For line rules, config path is the same as for layout rules
             writeln!(file, "        {{").unwrap();
             writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
-            writeln!(
-                file,
-                "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
-                config_path
-            )
-            .unwrap();
+            writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base) {{").unwrap();
             writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
             writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
             writeln!(
@@ -535,12 +525,7 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
             let config_path = rule.config_path();
             writeln!(file, "        {{").unwrap();
             writeln!(file, "            let cfg = &$checker.config().{};", config_path).unwrap();
-            writeln!(
-                file,
-                "            if cfg.base.enabled && $checker.should_run_cop_cached(\"{}\", &cfg.base) {{",
-                config_path
-            )
-            .unwrap();
+            writeln!(file, "            if cfg.base.enabled && $checker.should_run_cop(&cfg.base) {{").unwrap();
             writeln!(file, "                if std::env::var(\"RUEKO_PROFILE_RULES\").is_ok() {{").unwrap();
             writeln!(file, "                    let __reuko_rule_start = std::time::Instant::now();").unwrap();
             writeln!(file, "                    {}::check($checker);", full_path).unwrap();
@@ -573,21 +558,6 @@ fn generate_registry(out_dir: &str, rule_impls: &FxHashMap<String, Vec<RuleInfo>
         writeln!(file, "}}\n").unwrap();
         writeln!(file).unwrap();
     }
-
-    // Generate a helper function to precompute should-run map for all rules.
-    writeln!(file, "/// Precompute `should_run` for all rules and store into the checker's cache.").unwrap();
-    writeln!(file, "pub fn __reuko_precompute_should_run_map(checker: &crate::checker::Checker<'_>) {{").unwrap();
-    for (_key, vec) in rule_impls {
-        for r in vec {
-            let cfg_path = r.config_path();
-            writeln!(file, "    {{").unwrap();
-            writeln!(file, "        let cfg = &checker.config().{};", cfg_path).unwrap();
-            writeln!(file, "        let enabled = cfg.base.enabled && checker.should_run_cop(&cfg.base);").unwrap();
-            writeln!(file, "        checker.set_should_run_cached(\"{}\", enabled);", cfg_path).unwrap();
-            writeln!(file, "    }}").unwrap();
-        }
-    }
-    writeln!(file, "}}").unwrap();
 }
 
 /// Converts PascalCase to snake_case.
