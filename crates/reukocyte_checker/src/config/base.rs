@@ -1,44 +1,38 @@
-//! Base configuration shared by all cops.
-
-use crate::config::serde_helpers::{deserialize_enabled, deserialize_severity};
+use crate::config::serde_helpers::deserialize_enabled;
+use crate::config::serde_helpers::deserialize_severity;
 use crate::diagnostic::Severity;
+use globset::Glob;
+use globset::GlobSet;
+use globset::GlobSetBuilder;
 use serde::Deserialize;
-use globset::{Glob, GlobSet, GlobSetBuilder};
 
 /// Base configuration fields shared by all cops.
 ///
-/// This struct is meant to be used with `#[serde(flatten)]` in each cop's config.
+/// This struct is meant to be used with `#[serde(flatten)]` in each config.
 ///
 /// # Example
 /// ```ignore
 /// #[derive(Debug, Clone, Deserialize)]
 /// #[serde(default, rename_all = "PascalCase")]
-/// pub struct MyCop {
+/// pub struct ConfigName {
 ///     #[serde(flatten)]
 ///     pub base: BaseCopConfig,
-///     // Cop-specific fields below...
-///     pub my_option: String,
+///     pub option: String,
 /// }
 /// ```
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct BaseCopConfig {
-    /// Whether this cop is enabled.
     #[serde(deserialize_with = "deserialize_enabled")]
     pub enabled: bool,
-    /// Severity level for this cop.
     #[serde(deserialize_with = "deserialize_severity")]
     pub severity: Severity,
-    /// Files to exclude from this cop.
     #[serde(default)]
     pub exclude: Vec<String>,
-    /// Files to include for this cop (cop only runs on matching files).
     #[serde(default)]
     pub include: Vec<String>,
-    /// Compiled GlobSet for include patterns (precompiled in loader)
     #[serde(skip)]
     pub(crate) include_glob: Option<GlobSet>,
-    /// Compiled GlobSet for exclude patterns
     #[serde(skip)]
     pub(crate) exclude_glob: Option<GlobSet>,
 }
@@ -54,7 +48,6 @@ impl Default for BaseCopConfig {
         }
     }
 }
-
 impl BaseCopConfig {
     /// Creates a new base config with the specified default severity.
     pub fn with_severity(severity: Severity) -> Self {
@@ -63,42 +56,25 @@ impl BaseCopConfig {
             ..Default::default()
         }
     }
-}
-
-impl BaseCopConfig {
-    /// Compile include/exclude globs into GlobSets (idempotent).
+    /// Compiles the include and exclude glob patterns.
     pub fn compile_globs(&mut self) {
+        // helper to compile patterns
+        fn compile(patterns: &Vec<String>) -> Option<GlobSet> {
+            if patterns.is_empty() {
+                None
+            } else {
+                let mut builder = GlobSetBuilder::new();
+                for pattern in patterns {
+                    if let Ok(glob) = Glob::new(pattern) {
+                        builder.add(glob);
+                    }
+                }
+                if let Ok(glob_set) = builder.build() { Some(glob_set) } else { None }
+            }
+        }
         // compile include
-        if !self.include.is_empty() {
-            let mut builder = GlobSetBuilder::new();
-            for pattern in &self.include {
-                if let Ok(glob) = Glob::new(pattern) {
-                    builder.add(glob);
-                }
-            }
-            if let Ok(gset) = builder.build() {
-                self.include_glob = Some(gset);
-            } else {
-                self.include_glob = None;
-            }
-        } else {
-            self.include_glob = None;
-        }
+        self.include_glob = if self.include.is_empty() { None } else { compile(&self.include) };
         // compile exclude
-        if !self.exclude.is_empty() {
-            let mut builder = GlobSetBuilder::new();
-            for pattern in &self.exclude {
-                if let Ok(glob) = Glob::new(pattern) {
-                    builder.add(glob);
-                }
-            }
-            if let Ok(gset) = builder.build() {
-                self.exclude_glob = Some(gset);
-            } else {
-                self.exclude_glob = None;
-            }
-        } else {
-            self.exclude_glob = None;
-        }
+        self.exclude_glob = if self.exclude.is_empty() { None } else { compile(&self.exclude) };
     }
 }

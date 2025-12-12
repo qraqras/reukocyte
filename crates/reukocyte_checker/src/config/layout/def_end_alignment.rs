@@ -6,12 +6,10 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct DefEndAlignment {
-    /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
-
 impl Default for DefEndAlignment {
     fn default() -> Self {
         Self {
@@ -25,7 +23,7 @@ impl Default for DefEndAlignment {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EnforcedStyleAlignWith {
+    Def,
     #[default]
     StartOfLine,
-    Def,
 }

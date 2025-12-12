@@ -1,13 +1,9 @@
-//! YAML intermediate representation for .rubocop.yml parsing.
-//!
-//! This module defines the raw YAML structure that maps directly to RuboCop's
-//! configuration format. The `define_cops!` macro generates the `RubocopYaml`
-//! struct and related functionality.
-
+use super::macros::generate_rubocop_yaml;
+use globset::Glob;
+use globset::GlobSet;
+use globset::GlobSetBuilder;
 use serde::Deserialize;
 use std::path::PathBuf;
-
-use super::macros::define_cops;
 
 // ============================================================================
 // Define all cops in one place
@@ -20,7 +16,7 @@ use super::macros::define_cops;
 //
 // That's it! RubocopYaml, from_rubocop_yaml, and merge_configs are auto-generated.
 
-define_cops! {
+generate_rubocop_yaml! {
     layout {
         "Layout/AccessModifierIndentation" => AccessModifierIndentation, access_modifier_indentation,
         "Layout/BeginEndAlignment" => BeginEndAlignment, begin_end_alignment,
@@ -79,33 +75,47 @@ impl InheritFrom {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AllCopsConfig {
-    /// Target Ruby version (e.g., "3.2", "3.3").
     #[serde(default)]
     pub target_ruby_version: Option<String>,
-    /// Files to exclude from all cops.
     #[serde(default)]
     pub exclude: Vec<String>,
-    /// Files to include for all cops.
     #[serde(default)]
     pub include: Vec<String>,
-    /// Whether to use cache.
     #[serde(default)]
     pub use_cache: Option<bool>,
-    /// Cache root directory.
     #[serde(default)]
     pub cache_root_directory: Option<String>,
-    /// New cops behavior: enable, disable, or pending.
     #[serde(default)]
     pub new_cops: Option<String>,
-    /// Suggested extensions.
     #[serde(default)]
     pub suggested_extensions: Option<bool>,
-    /// Compiled GlobSet for include patterns (precompiled in loader)
     #[serde(skip)]
     pub(crate) include_glob: Option<globset::GlobSet>,
-    /// Compiled GlobSet for exclude patterns
     #[serde(skip)]
     pub(crate) exclude_glob: Option<globset::GlobSet>,
+}
+impl AllCopsConfig {
+    /// Compile global include/exclude globs into GlobSets (idempotent).
+    pub fn compile_globs(&mut self) {
+        // helper to compile patterns
+        fn compile(patterns: &Vec<String>) -> Option<GlobSet> {
+            if patterns.is_empty() {
+                None
+            } else {
+                let mut builder = GlobSetBuilder::new();
+                for pattern in patterns {
+                    if let Ok(g) = Glob::new(pattern) {
+                        builder.add(g);
+                    }
+                }
+                if let Ok(glob_set) = builder.build() { Some(glob_set) } else { None }
+            }
+        }
+        // includes
+        self.include_glob = if self.include.is_empty() { None } else { compile(&self.include) };
+        // excludes
+        self.exclude_glob = if self.exclude.is_empty() { None } else { compile(&self.exclude) };
+    }
 }
 
 /// Merge AllCops configuration. Child values override parent values.
@@ -120,41 +130,6 @@ pub(super) fn merge_all_cops(parent: AllCopsConfig, child: AllCopsConfig) -> All
         suggested_extensions: child.suggested_extensions.or(parent.suggested_extensions),
         include_glob: None,
         exclude_glob: None,
-    }
-}
-
-impl AllCopsConfig {
-    /// Compile global include/exclude globs into GlobSets (idempotent).
-    pub fn compile_globs(&mut self) {
-        use globset::{GlobSetBuilder, Glob};
-        // includes
-        if !self.include.is_empty() {
-            let mut builder = GlobSetBuilder::new();
-            for p in &self.include {
-                if let Ok(g) = Glob::new(p) { builder.add(g); }
-            }
-            if let Ok(gs) = builder.build() {
-                self.include_glob = Some(gs);
-            } else {
-                self.include_glob = None;
-            }
-        } else {
-            self.include_glob = None;
-        }
-        // excludes
-        if !self.exclude.is_empty() {
-            let mut builder = GlobSetBuilder::new();
-            for p in &self.exclude {
-                if let Ok(g) = Glob::new(p) { builder.add(g); }
-            }
-            if let Ok(gs) = builder.build() {
-                self.exclude_glob = Some(gs);
-            } else {
-                self.exclude_glob = None;
-            }
-        } else {
-            self.exclude_glob = None;
-        }
     }
 }
 

@@ -1,6 +1,6 @@
 pub mod debugger;
 
-/// Lint cop configurations.
+/// Lint rule configurations.
 #[derive(Debug, Clone, Default)]
 pub struct LintConfig {
     pub debugger: debugger::Debugger,

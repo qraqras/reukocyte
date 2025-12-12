@@ -1,50 +1,56 @@
-/// LineIndex helps map byte offsets to line and column numbers.
-use crate::rule::Line as RuleLine;
+/// A representation of a single source line for line-based checks.
+///
+/// `Line` contains the line index (0-based), the byte range of the line
+/// relative to the source, and the raw line bytes.
+#[derive(Debug, Clone)]
+pub struct Line<'rk> {
+    pub index: usize,
+    pub start: usize,
+    pub end: usize,
+    pub indent: usize,
+    pub text: &'rk [u8],
+}
 
 #[derive(Debug, Clone)]
 pub struct LineIndex<'rk> {
-    lines: Vec<RuleLine<'rk>>,
-    stride: usize,             // Number of lines per stride group
-    stride_starts: Vec<usize>, // Start offsets for each stride group
+    lines: Vec<Line<'rk>>,
+    stride: usize,
+    stride_starts: Vec<usize>,
 }
 impl<'rk> LineIndex<'rk> {
     /// Build a LineIndex from source bytes.
     pub fn from_source(source: &'rk [u8]) -> Self {
-        // return Self {
-        //     lines: Vec::new(),
-        //     stride: 0,
-        //     stride_starts: Vec::new(),
-        // };
-
-        let mut line_starts = Vec::with_capacity(source.len() / 80); // Rough estimate
+        // Collect line start and end offsets
+        let mut line_starts = Vec::with_capacity(source.len() / 80);
+        let mut line_ends = Vec::with_capacity(source.len() / 80);
+        // First line starts at 0
         line_starts.push(0);
-        for (i, &byte) in source.iter().enumerate() {
-            if byte == b'\n' {
-                line_starts.push(i + 1);
+        for (pos, &b) in source.iter().enumerate() {
+            if b == b'\n' {
+                line_ends.push(pos);
+                line_starts.push(pos + 1);
             }
         }
+        // Last line ends at source.len()
+        line_ends.push(source.len());
 
-        // Build lines cache
+        // Build Line structures
         let mut lines = Vec::with_capacity(line_starts.len());
         for i in 0..line_starts.len() {
             let start = line_starts[i];
-            let end = if i + 1 < line_starts.len() {
-                line_starts[i + 1].saturating_sub(1)
-            } else {
-                source.len()
-            };
+            let end = line_ends[i];
             let text = &source[start..end];
-            let indent = text.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
-            lines.push(RuleLine {
+            let indent = text.iter().position(|&b| b != b' ' && b != b'\t').unwrap_or(text.len());
+            lines.push(Line {
                 index: i,
-                start,
-                end,
-                text,
-                indent,
+                start: start,
+                end: end,
+                indent: indent,
+                text: text,
             });
         }
 
-        // Build stride index (e.g., every 64 lines)
+        // Build stride index for faster line lookup
         const STRIDE_SIZE: usize = 64;
         let mut stride_starts = Vec::new();
         for i in (0..lines.len()).step_by(STRIDE_SIZE) {
@@ -56,6 +62,10 @@ impl<'rk> LineIndex<'rk> {
             stride: STRIDE_SIZE,
             stride_starts,
         }
+    }
+    /// Get all lines.
+    pub fn lines(&self) -> &[Line<'rk>] {
+        &self.lines
     }
     /// Get the line index (0-indexed) for a byte offset.
     pub fn line_index(&self, offset: usize) -> usize {

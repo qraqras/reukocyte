@@ -5,7 +5,7 @@
 ///
 /// # Usage
 /// ```ignore
-/// define_cops! {
+/// generate_rubocop_yaml! {
 ///     layout {
 ///         "Layout/EndAlignment" => EndAlignment, end_alignment,
 ///         "Layout/TrailingWhitespace" => TrailingWhitespace, trailing_whitespace,
@@ -15,7 +15,7 @@
 ///     }
 /// }
 /// ```
-macro_rules! define_cops {
+macro_rules! generate_rubocop_yaml {
     (
         layout {
             $($layout_rename:literal => $layout_cop:ident, $layout_field:ident),* $(,)?
@@ -37,21 +37,14 @@ macro_rules! define_cops {
         /// Each cop configuration is directly deserialized using `#[serde(rename)]`.
         #[derive(Debug, Clone, Default, serde::Deserialize)]
         pub struct RubocopYaml {
-            /// Files to inherit configuration from.
             #[serde(default)]
             pub inherit_from: InheritFrom,
-
-            /// Global settings that apply to all cops.
             #[serde(rename = "AllCops", default)]
             pub all_cops: AllCopsConfig,
-
-            // Layout cops
             $(
                 #[serde(rename = $layout_rename, default)]
                 pub $layout_field: super::layout::$layout_field::$layout_cop,
             )*
-
-            // Lint cops
             $(
                 #[serde(rename = $lint_rename, default)]
                 pub $lint_field: super::lint::$lint_field::$lint_cop,
@@ -97,7 +90,7 @@ macro_rules! define_cops {
         /// Merge two configurations. Child values override parent values.
         pub(super) fn merge_configs(parent: RubocopYaml, child: RubocopYaml) -> RubocopYaml {
             /// Merge a cop config: use child if it has explicit overrides.
-            macro_rules! merge_cop {
+            macro_rules! merge {
                 ($parent:expr, $child:expr, $default:expr) => {{
                     if !$child.base.enabled && $default.base.enabled {
                         $child
@@ -115,14 +108,14 @@ macro_rules! define_cops {
                 inherit_from: child.inherit_from,
                 all_cops: merge_all_cops(parent.all_cops, child.all_cops),
                 $(
-                    $layout_field: merge_cop!(
+                    $layout_field: merge!(
                         parent.$layout_field,
                         child.$layout_field,
                         super::layout::$layout_field::$layout_cop::default()
                     ),
                 )*
                 $(
-                    $lint_field: merge_cop!(
+                    $lint_field: merge!(
                         parent.$lint_field,
                         child.$lint_field,
                         super::lint::$lint_field::$lint_cop::default()
@@ -133,4 +126,4 @@ macro_rules! define_cops {
     };
 }
 
-pub(super) use define_cops;
+pub(super) use generate_rubocop_yaml;

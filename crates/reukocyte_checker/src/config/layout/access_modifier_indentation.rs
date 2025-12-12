@@ -5,13 +5,11 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct AccessModifierIndentation {
-    /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
     pub enforced_style: EnforcedStyle,
     pub indentation_width: Option<usize>,
 }
-
 impl Default for AccessModifierIndentation {
     fn default() -> Self {
         Self {

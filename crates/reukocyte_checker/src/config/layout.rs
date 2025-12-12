@@ -10,7 +10,7 @@ pub mod leading_empty_lines;
 pub mod trailing_empty_lines;
 pub mod trailing_whitespace;
 
-/// Layout cop configurations.
+/// Layout rule configurations.
 #[derive(Debug, Clone, Default)]
 pub struct LayoutConfig {
     pub access_modifier_indentation: access_modifier_indentation::AccessModifierIndentation,

@@ -1,7 +1,3 @@
-# frozen_string_literal: true
-
-# This file contains trailing whitespace violations for testing
-
 class Example
   def method_with_trailing_spaces
     value = 42

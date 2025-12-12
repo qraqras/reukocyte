@@ -6,13 +6,10 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct EndAlignment {
-    /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
-    /// The style of alignment for `end` keywords.
     pub enforced_style_align_with: EnforcedStyleAlignWith,
 }
-
 impl Default for EndAlignment {
     fn default() -> Self {
         Self {
@@ -28,6 +25,6 @@ impl Default for EndAlignment {
 pub enum EnforcedStyleAlignWith {
     #[default]
     Keyword,
-    Variable,
     StartOfLine,
+    Variable,
 }

@@ -5,11 +5,9 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "PascalCase")]
 pub struct EmptyLines {
-    /// Base configuration (enabled, severity, exclude, include).
     #[serde(flatten)]
     pub base: BaseCopConfig,
 }
-
 impl Default for EmptyLines {
     fn default() -> Self {
         Self {

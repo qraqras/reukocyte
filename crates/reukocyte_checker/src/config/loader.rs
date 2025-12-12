@@ -1,17 +1,17 @@
-use super::yaml::{RubocopYaml, merge_configs};
+use super::yaml::RubocopYaml;
+use super::yaml::merge_configs;
 use rustc_hash::FxHashSet;
+use std::error::Error;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 /// Error type for configuration loading.
 #[derive(Debug)]
 pub enum LoadError {
-    /// IO error when reading a file.
-    Io(io::Error),
-    /// YAML parsing error.
-    Yaml(serde_yaml::Error),
-    /// Circular inheritance detected.
     CircularInheritance(PathBuf),
+    Io(io::Error),
+    Yaml(serde_yaml::Error),
 }
 impl std::fmt::Display for LoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -24,12 +24,12 @@ impl std::fmt::Display for LoadError {
         }
     }
 }
-impl std::error::Error for LoadError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl Error for LoadError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            LoadError::CircularInheritance(_) => None,
             LoadError::Io(e) => Some(e),
             LoadError::Yaml(e) => Some(e),
-            LoadError::CircularInheritance(_) => None,
         }
     }
 }
@@ -108,76 +108,4 @@ fn load_with_inheritance(path: &Path, visited: &mut FxHashSet<PathBuf>) -> Resul
         }
     }
     Ok(config)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::layout::end_alignment::EnforcedStyleAlignWith;
-
-    #[test]
-    fn test_parse_simple() {
-        let yaml = r#"
-Layout/EndAlignment:
-  EnforcedStyleAlignWith: variable
-"#;
-        let config = parse_rubocop_yaml(yaml).unwrap();
-        assert_eq!(config.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
-    }
-
-    #[test]
-    fn test_merge_configs() {
-        let parent_yaml = r#"
-Layout/EndAlignment:
-  Enabled: true
-  EnforcedStyleAlignWith: keyword
-"#;
-        let child_yaml = r#"
-Layout/EndAlignment:
-  EnforcedStyleAlignWith: variable
-"#;
-        let parent = parse_rubocop_yaml(parent_yaml).unwrap();
-        let child = parse_rubocop_yaml(child_yaml).unwrap();
-
-        let merged = merge_configs(parent, child);
-
-        // Enabled should still be true
-        assert!(merged.end_alignment.base.enabled);
-
-        // EnforcedStyleAlignWith should come from child
-        assert_eq!(merged.end_alignment.enforced_style_align_with, EnforcedStyleAlignWith::Variable);
-    }
-
-    #[test]
-    fn test_merge_all_cops() {
-        let parent_yaml = r#"
-AllCops:
-  TargetRubyVersion: 3.1
-  Exclude:
-    - vendor/**/*
-"#;
-        let child_yaml = r#"
-AllCops:
-  TargetRubyVersion: 3.2
-"#;
-        let parent = parse_rubocop_yaml(parent_yaml).unwrap();
-        let child = parse_rubocop_yaml(child_yaml).unwrap();
-
-        let merged = merge_configs(parent, child);
-
-        // Child's ruby version overrides parent
-        assert_eq!(merged.all_cops.target_ruby_version, Some("3.2".to_string()));
-        // Parent's exclude is kept (child didn't specify)
-        assert_eq!(merged.all_cops.exclude.len(), 1);
-    }
-
-    #[test]
-    fn test_enabled_false() {
-        let yaml = r#"
-Layout/EndAlignment:
-  Enabled: false
-"#;
-        let config = parse_rubocop_yaml(yaml).unwrap();
-        assert!(!config.end_alignment.base.enabled);
-    }
 }

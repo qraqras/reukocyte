@@ -1,6 +1,8 @@
 use std::fmt;
 
 use crate::checker::Checker;
+// Re-export the Line type so rule macros can refer to crate::rule::Line
+pub use crate::locator::Line;
 
 /// Unique identifier for a rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -147,24 +149,6 @@ pub trait Rule {
 /// ```
 pub trait Check<N>: Rule {
     fn check(node: &N, checker: &mut Checker);
-}
-
-/// A representation of a single source line for line-based checks.
-///
-/// `Line` contains the line index (0-based), the byte range of the line
-/// relative to the source, and the raw line bytes.
-#[derive(Debug, Clone)]
-pub struct Line<'a> {
-    /// 0-based line index
-    pub index: usize,
-    /// byte offset of the start of the line in the source
-    pub start: usize,
-    /// byte offset of the end of the line in the source (exclusive)
-    pub end: usize,
-    /// raw bytes of the line (without trailing newline)
-    pub text: &'a [u8],
-    /// indentation (number of leading spaces / tabs on the start of the line)
-    pub indent: usize,
 }
 
 #[cfg(test)]

@@ -207,7 +207,7 @@ fn filter_diagnostics(diagnostics: Vec<Diagnostic>, args: &Args) -> Vec<Diagnost
 
 /// Check a file and return (remaining_diagnostics, fixed_count).
 fn check_file(path: &str, source: &[u8], args: &Args, config: &Config) -> (Vec<Diagnostic>, usize) {
-    let diagnostics = check_with_config_and_path(source, config, Some(path));
+    let diagnostics = check_with_config_and_path(source, config, Some(std::path::Path::new(path)));
     let diagnostics = filter_diagnostics(diagnostics, args);
 
     if args.should_fix() && !diagnostics.is_empty() {
@@ -224,7 +224,7 @@ fn check_file(path: &str, source: &[u8], args: &Args, config: &Config) -> (Vec<D
         }
 
         // Get remaining diagnostics (also filtered)
-        let remaining = check_with_config_and_path(&fixed_source, config, Some(path));
+        let remaining = check_with_config_and_path(&fixed_source, config, Some(std::path::Path::new(path)));
         let remaining = filter_diagnostics(remaining, args);
         print_diagnostics(path, &remaining, args);
         (remaining, fix_count)
