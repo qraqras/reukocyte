@@ -1,3 +1,4 @@
+use crate::semantic::Indexer;
 mod checker;
 mod config;
 mod conflict;
@@ -7,6 +8,7 @@ mod diagnostic;
 mod fix;
 mod locator;
 mod rule;
+mod semantic;
 pub mod utility;
 
 pub mod rules;
@@ -53,7 +55,10 @@ pub fn check_with_config_and_path(source: &[u8], config: &Config, file_path: Opt
     // Phase 1: Run AST-based rules (single traversal with semantic model building)
     if true {
         if let Some(ref parse_result) = parse_result {
-            checker.visit_nodes(&parse_result.node());
+            let node = parse_result.node();
+            checker.semantic = Indexer::new().index(&node);
+            let node2 = parse_result.node();
+            checker.visit_nodes(node2);
         }
     }
 
